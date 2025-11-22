@@ -50,7 +50,7 @@ export const useCoinflipRooms = (walletAddress: string | null) => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setRooms(data || []);
+      setRooms((data as Room[]) || []);
     } catch (error) {
       console.error('Error fetching rooms:', error);
     } finally {

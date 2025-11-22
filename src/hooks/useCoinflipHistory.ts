@@ -33,11 +33,11 @@ export const useCoinflipHistory = (walletAddress: string | null) => {
         .from('coinflip_history')
         .select('*')
         .eq('player_wallet', walletAddress)
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: false})
         .limit(20);
 
       if (error) throw error;
-      setHistory(data || []);
+      setHistory((data as HistoryItem[]) || []);
     } catch (error) {
       console.error('Error fetching history:', error);
     } finally {

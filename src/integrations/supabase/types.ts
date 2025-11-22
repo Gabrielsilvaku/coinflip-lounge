@@ -14,7 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      coinflip_history: {
+        Row: {
+          bet_amount: number
+          chosen_side: string
+          created_at: string | null
+          id: string
+          player_wallet: string
+          result: string
+          won: boolean
+        }
+        Insert: {
+          bet_amount: number
+          chosen_side: string
+          created_at?: string | null
+          id?: string
+          player_wallet: string
+          result: string
+          won: boolean
+        }
+        Update: {
+          bet_amount?: number
+          chosen_side?: string
+          created_at?: string | null
+          id?: string
+          player_wallet?: string
+          result?: string
+          won?: boolean
+        }
+        Relationships: []
+      }
+      coinflip_rooms: {
+        Row: {
+          bet_amount: number
+          created_at: string | null
+          creator_side: string
+          creator_wallet: string
+          id: string
+          status: string
+        }
+        Insert: {
+          bet_amount: number
+          created_at?: string | null
+          creator_side: string
+          creator_wallet: string
+          id?: string
+          status?: string
+        }
+        Update: {
+          bet_amount?: number
+          created_at?: string | null
+          creator_side?: string
+          creator_wallet?: string
+          id?: string
+          status?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
