@@ -2,48 +2,55 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here.
 All colors MUST be HSL.
 */
 
 @layer base {
   :root {
-    --background: 225 25% 6%;
-    --foreground: 210 40% 98%;
+    --background: 0 0% 0%;
+    --foreground: 180 100% 95%;
 
-    --card: 225 20% 10%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 5%;
+    --card-foreground: 180 100% 95%;
 
-    --popover: 225 20% 10%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 180 100% 95%;
 
-    --primary: 263 70% 65%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 174 100% 50%;
+    --primary-foreground: 0 0% 0%;
 
-    --secondary: 225 15% 15%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 292 100% 50%;
+    --secondary-foreground: 180 100% 95%;
 
-    --muted: 225 15% 15%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 0 0% 15%;
+    --muted-foreground: 180 20% 60%;
 
-    --accent: 189 100% 50%;
-    --accent-foreground: 225 25% 6%;
+    --accent: 292 100% 50%;
+    --accent-foreground: 180 100% 95%;
 
     --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive-foreground: 180 100% 95%;
 
-    --border: 225 15% 20%;
-    --input: 225 15% 15%;
-    --ring: 263 70% 65%;
+    --border: 174 100% 50%;
+    --input: 0 0% 15%;
+    --ring: 174 100% 50%;
 
-    --radius: 0.75rem;
+    --radius: 0.5rem;
 
-    --game-card: 225 20% 12%;
-    --game-card-hover: 225 20% 14%;
-    --neon-purple: 263 70% 65%;
-    --neon-cyan: 189 100% 50%;
-    --success: 142 76% 36%;
-    --warning: 45 93% 47%;
+    --neon-cyan: 174 100% 50%;
+    --neon-cyan-glow: 174 100% 70%;
+    --neon-purple: 292 100% 50%;
+    --neon-purple-glow: 292 100% 70%;
+
+    --card-glass: 0 0% 10%;
+    --card-border: 174 100% 50%;
+
+    --shadow-neon-cyan: 0 0 20px hsl(174 100% 50% / 0.5);
+    --shadow-neon-purple: 0 0 20px hsl(292 100% 50% / 0.5);
+    --shadow-intense: 0 0 40px hsl(174 100% 50% / 0.8);
+
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
@@ -54,5 +61,19 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+
+  .transform-style-3d {
+    transform-style: preserve-3d;
+  }
+
+  .backface-hidden {
+    backface-visibility: hidden;
   }
 }
