@@ -26,8 +26,9 @@ export default function Coinflip() {
   const { rooms, loading: roomsLoading, createRoom, joinRoom } = useCoinflipRooms(walletAddress);
   const { history, loading: historyLoading } = useCoinflipHistory(walletAddress);
 
-  const handleConnect = (address: string) => {
+  const handleConnect = (address: string, walletType: string) => {
     setWalletAddress(address);
+    localStorage.setItem('walletType', walletType);
     toast.success("Carteira conectada!");
   };
 

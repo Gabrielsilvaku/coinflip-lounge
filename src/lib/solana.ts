@@ -51,9 +51,28 @@ export const connectWallet = async (walletType: 'phantom' | 'solflare' | 'coin98
 
   try {
     const response = await provider.connect();
-    return response.publicKey.toString();
+    return { 
+      publicKey: response.publicKey.toString(),
+      provider 
+    };
   } catch (error) {
     console.error('Error connecting wallet:', error);
     throw error;
+  }
+};
+
+// Get connected wallet provider
+export const getWalletProvider = (walletType: 'phantom' | 'solflare' | 'coin98') => {
+  const wallets = detectWallets();
+  
+  switch (walletType) {
+    case 'phantom':
+      return wallets.phantom;
+    case 'solflare':
+      return wallets.solflare;
+    case 'coin98':
+      return wallets.coin98;
+    default:
+      return null;
   }
 };

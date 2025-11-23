@@ -61,10 +61,10 @@ export const WalletModal = ({ isOpen, onClose, onConnect }: WalletModalProps) =>
       }
 
       toast.loading("Conectando...");
-      const address = await connectWallet(walletKey as 'phantom' | 'solflare' | 'coin98');
+      const result = await connectWallet(walletKey as 'phantom' | 'solflare' | 'coin98');
       toast.dismiss();
       toast.success("Carteira conectada!");
-      onConnect(address, walletKey);
+      onConnect(result.publicKey, walletKey);
       onClose();
     } catch (error: any) {
       toast.dismiss();
