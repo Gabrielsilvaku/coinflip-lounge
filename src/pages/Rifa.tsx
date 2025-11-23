@@ -47,7 +47,7 @@ const Rifa = () => {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Card className="bg-card border-2 border-border overflow-hidden hover:border-primary/50 transition-all">
+            <Card className="bg-card border-2 border-[#00ffff]/30 overflow-hidden hover:border-[#00ffff] transition-all shadow-[0_0_30px_rgba(0,255,255,0.3)]">
               <div className="relative">
                 <div className="absolute top-3 left-3 bg-primary text-primary-foreground px-3 py-1 rounded-full text-sm font-bold flex items-center gap-1 z-10">
                   <Ticket className="w-4 h-4" />
@@ -57,13 +57,17 @@ const Rifa = () => {
                   $2.000,00
                 </div>
 
-                <div className="h-64 bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center relative overflow-hidden">
+                <div className="h-64 bg-gradient-to-br from-[#00ffff]/20 via-[#a020f0]/20 to-[#00ffff]/20 flex items-center justify-center relative overflow-hidden">
+                  <div className="absolute inset-0 animate-pulse bg-gradient-to-r from-[#00ffff]/10 to-[#a020f0]/10"></div>
                   <img 
                     src={gogetaGif} 
                     alt="Jackpot Gogeta Animation" 
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover relative z-10"
+                    style={{
+                      filter: 'drop-shadow(0 0 20px rgba(0, 255, 255, 0.5)) drop-shadow(0 0 40px rgba(160, 32, 240, 0.5))'
+                    }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-card via-transparent to-transparent z-20"></div>
                 </div>
               </div>
 
@@ -119,7 +123,7 @@ const Rifa = () => {
                 </div>
 
                 <Button
-                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold py-6 text-lg"
+                  className="w-full bg-gradient-to-r from-[#00ffff] to-[#a020f0] hover:from-[#00ffff]/90 hover:to-[#a020f0]/90 text-white font-bold py-6 text-lg shadow-[0_0_20px_rgba(0,255,255,0.5)]"
                   disabled
                 >
                   Seja o primeiro!

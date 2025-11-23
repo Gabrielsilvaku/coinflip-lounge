@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      chat_messages: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string
+          room_id: string
+          wallet_address: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message: string
+          room_id: string
+          wallet_address: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string
+          room_id?: string
+          wallet_address?: string
+        }
+        Relationships: []
+      }
       coinflip_history: {
         Row: {
           bet_amount: number
@@ -51,7 +75,10 @@ export type Database = {
           creator_side: string
           creator_wallet: string
           id: string
+          joiner_wallet: string | null
+          result: string | null
           status: string
+          winner_wallet: string | null
         }
         Insert: {
           bet_amount: number
@@ -59,7 +86,10 @@ export type Database = {
           creator_side: string
           creator_wallet: string
           id?: string
+          joiner_wallet?: string | null
+          result?: string | null
           status?: string
+          winner_wallet?: string | null
         }
         Update: {
           bet_amount?: number
@@ -67,7 +97,10 @@ export type Database = {
           creator_side?: string
           creator_wallet?: string
           id?: string
+          joiner_wallet?: string | null
+          result?: string | null
           status?: string
+          winner_wallet?: string | null
         }
         Relationships: []
       }
