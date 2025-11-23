@@ -11,6 +11,9 @@ interface Room {
   bet_amount: number;
   status: string;
   created_at: string;
+  joiner_wallet?: string;
+  result?: string;
+  winner_wallet?: string;
 }
 
 export const useCoinflipRooms = (walletAddress: string | null) => {
@@ -87,48 +90,82 @@ export const useCoinflipRooms = (walletAddress: string | null) => {
 
   const joinRoom = async (roomId: string) => {
     if (!walletAddress) {
-      toast.error('Connect your wallet first');
-      return false;
+      toast.error('Conecte sua carteira primeiro');
+      return { success: false };
     }
 
     try {
-      // Simulate joining and flipping
       const room = rooms.find(r => r.id === roomId);
-      if (!room) return false;
+      if (!room) return { success: false };
 
-      const flipResult: CoinSide = Math.random() > 0.5 ? 'heads' : 'tails';
-      const won = flipResult === room.creator_side;
-
-      // Update room status
-      await supabase
+      // Update room with joiner
+      const { error: updateError } = await supabase
         .from('coinflip_rooms')
-        .update({ status: 'completed' })
+        .update({ 
+          joiner_wallet: walletAddress,
+          status: 'playing'
+        })
         .eq('id', roomId);
 
-      // Save to history
-      await supabase
-        .from('coinflip_history')
-        .insert({
-          player_wallet: walletAddress,
-          bet_amount: room.bet_amount,
-          chosen_side: room.creator_side === 'heads' ? 'tails' : 'heads',
-          result: flipResult,
-          won: !won
-        });
+      if (updateError) throw updateError;
 
-      if (!won) {
-        toast.success('You won! 🎉');
-      } else {
-        toast.error('You lost! 😔');
-      }
-
-      return true;
+      return { success: true, room };
     } catch (error) {
       console.error('Error joining room:', error);
-      toast.error('Failed to join room');
-      return false;
+      toast.error('Falha ao entrar na sala');
+      return { success: false };
     }
   };
 
-  return { rooms, loading, createRoom, joinRoom };
+  const completeGame = async (roomId: string, result: CoinSide) => {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room || !room.joiner_wallet) return;
+
+    const creatorWon = result === room.creator_side;
+    const winnerWallet = creatorWon ? room.creator_wallet : room.joiner_wallet;
+
+    try {
+      // Update room with result
+      await supabase
+        .from('coinflip_rooms')
+        .update({ 
+          status: 'completed',
+          result,
+          winner_wallet: winnerWallet
+        })
+        .eq('id', roomId);
+
+      // Save creator history
+      await supabase
+        .from('coinflip_history')
+        .insert({
+          player_wallet: room.creator_wallet,
+          bet_amount: room.bet_amount,
+          chosen_side: room.creator_side,
+          result,
+          won: creatorWon
+        });
+
+      // Save joiner history
+      await supabase
+        .from('coinflip_history')
+        .insert({
+          player_wallet: room.joiner_wallet,
+          bet_amount: room.bet_amount,
+          chosen_side: room.creator_side === 'heads' ? 'tails' : 'heads',
+          result,
+          won: !creatorWon
+        });
+
+      if (walletAddress === winnerWallet) {
+        toast.success('🎉 Você ganhou!');
+      } else {
+        toast.error('😔 Você perdeu!');
+      }
+    } catch (error) {
+      console.error('Error completing game:', error);
+    }
+  };
+
+  return { rooms, loading, createRoom, joinRoom, completeGame };
 };
