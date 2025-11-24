@@ -8,6 +8,7 @@ import { WalletModal } from "@/components/WalletModal";
 import { CoinFlip3D } from "@/components/CoinFlip3D";
 import { useCoinflipRooms } from "@/hooks/useCoinflipRooms";
 import { useCoinflipHistory } from "@/hooks/useCoinflipHistory";
+import { useWallet } from "@/contexts/WalletContext";
 import gokuCoin from "@/assets/goku-coin.png";
 import vegetaCoin from "@/assets/vegeta-coin.png";
 import { Coins, Users, Clock } from "lucide-react";
@@ -19,18 +20,12 @@ export default function Coinflip() {
   const [isFlipping, setIsFlipping] = useState(false);
   const [result, setResult] = useState<CoinSide | null>(null);
   const [betAmount, setBetAmount] = useState("0.1");
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const { walletAddress } = useWallet();
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [mode, setMode] = useState<'solo' | 'multiplayer'>('multiplayer');
 
   const { rooms, loading: roomsLoading, createRoom, joinRoom } = useCoinflipRooms(walletAddress);
   const { history, loading: historyLoading } = useCoinflipHistory(walletAddress);
-
-  const handleConnect = (address: string, walletType: string) => {
-    setWalletAddress(address);
-    localStorage.setItem('walletType', walletType);
-    toast.success("Carteira conectada!");
-  };
 
   const handleFlip = (side: CoinSide) => {
     if (isFlipping) return;
@@ -107,7 +102,6 @@ export default function Coinflip() {
       <WalletModal
         isOpen={showWalletModal}
         onClose={() => setShowWalletModal(false)}
-        onConnect={handleConnect}
       />
 
       <div className="container mx-auto px-4 py-20">

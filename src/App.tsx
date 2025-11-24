@@ -10,6 +10,8 @@ import Rifa from "./pages/Rifa";
 import Coinflip from "./pages/Coinflip";
 import Bolada from "./pages/Bolada";
 import Auth from "./pages/Auth";
+import Admin from "./pages/Admin";
+import RaffleEnhanced from "./pages/RaffleEnhanced";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +30,8 @@ const App = () => (
             <Route path="/rifa" element={<Rifa />} />
             <Route path="/coinflip" element={<Coinflip />} />
             <Route path="/bolada" element={<Bolada />} />
+            <Route path="/admin" element={<Admin />} />
+            <Route path="/raffle" element={<RaffleEnhanced />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

@@ -6,21 +6,22 @@ import { Link, useLocation } from "react-router-dom";
 import { getBalance } from "@/lib/solana";
 import { PublicKey } from "@solana/web3.js";
 import profileIcon from "@/assets/profile-icon.jpeg";
+import { useWallet } from "@/contexts/WalletContext";
+import { LevelDisplay } from "./LevelDisplay";
 
 export const Header = () => {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
-  const [connectedWallet, setConnectedWallet] = useState<string | null>(null);
-  const [walletType, setWalletType] = useState<string | null>(null);
+  const { walletAddress } = useWallet();
   const [balance, setBalance] = useState<number>(0);
   const location = useLocation();
 
   const isActive = (path: string) => location.pathname === path;
 
   useEffect(() => {
-    if (connectedWallet) {
+    if (walletAddress) {
       const fetchBalance = async () => {
         try {
-          const publicKey = new PublicKey(connectedWallet);
+          const publicKey = new PublicKey(walletAddress);
           const bal = await getBalance(publicKey);
           setBalance(bal);
         } catch (error) {
@@ -32,18 +33,7 @@ export const Header = () => {
       const interval = setInterval(fetchBalance, 10000);
       return () => clearInterval(interval);
     }
-  }, [connectedWallet]);
-
-  const handleConnect = (address: string, type: string) => {
-    setConnectedWallet(address);
-    setWalletType(type);
-  };
-
-  const handleDisconnect = () => {
-    setConnectedWallet(null);
-    setWalletType(null);
-    setBalance(0);
-  };
+  }, [walletAddress]);
 
   return (
     <>
@@ -62,10 +52,10 @@ export const Header = () => {
           </Link>
 
           <nav className="hidden md:flex items-center gap-6">
-            <Link to="/rifa">
+            <Link to="/raffle">
               <Button
                 variant="ghost"
-                className={`text-foreground hover:text-primary hover:bg-transparent transition-colors ${isActive('/rifa') ? 'text-primary' : ''}`}
+                className={`text-foreground hover:text-primary hover:bg-transparent transition-colors ${isActive('/raffle') ? 'text-primary' : ''}`}
               >
                 Rifa
               </Button>
@@ -86,6 +76,17 @@ export const Header = () => {
                 Bolada
               </Button>
             </Link>
+            {walletAddress === 'PRINCEM' && (
+              <Link to="/admin">
+                <Button
+                  variant="ghost"
+                  className={`text-purple-400 hover:text-purple-300 hover:bg-transparent transition-colors ${isActive('/admin') ? 'text-purple-300' : ''}`}
+                >
+                  <Shield className="mr-2 h-4 w-4" />
+                  Admin
+                </Button>
+              </Link>
+            )}
             <Button
               variant="ghost"
               className="text-foreground hover:text-secondary hover:bg-transparent transition-colors relative group"
@@ -99,15 +100,13 @@ export const Header = () => {
           </nav>
 
           <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="text-foreground hover:text-primary"
-            >
-              <Bell className="h-5 w-5" />
-            </Button>
+            {walletAddress && (
+              <div className="hidden lg:block">
+                <LevelDisplay walletAddress={walletAddress} />
+              </div>
+            )}
 
-            {connectedWallet ? (
+            {walletAddress ? (
               <>
                 <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-card-glass border border-primary/30 rounded-lg">
                   <div className="text-right">
@@ -117,26 +116,11 @@ export const Header = () => {
                 </div>
 
                 <Button
-                  variant="outline"
-                  className="border-primary text-primary hover:bg-primary/10"
+                  onClick={() => setIsWalletModalOpen(true)}
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   <User className="mr-2 h-4 w-4" />
-                  Perfil
-                </Button>
-                <Button
-                  variant="outline"
-                  className="border-primary text-primary hover:bg-primary/10"
-                >
-                  <Shield className="mr-2 h-4 w-4" />
-                  Admin
-                </Button>
-                <Button
-                  variant="outline"
-                  className="border-destructive text-destructive hover:bg-destructive/10"
-                  onClick={handleDisconnect}
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Sair
+                  {walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}
                 </Button>
               </>
             ) : (
@@ -155,7 +139,6 @@ export const Header = () => {
       <WalletModal
         isOpen={isWalletModalOpen}
         onClose={() => setIsWalletModalOpen(false)}
-        onConnect={handleConnect}
       />
     </>
   );

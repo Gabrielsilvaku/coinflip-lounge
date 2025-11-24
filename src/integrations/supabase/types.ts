@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      action_logs: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          details: Json | null
+          id: string
+          performed_by: string | null
+          target_wallet: string | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          performed_by?: string | null
+          target_wallet?: string | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+          performed_by?: string | null
+          target_wallet?: string | null
+        }
+        Relationships: []
+      }
+      banned_users: {
+        Row: {
+          banned_at: string | null
+          banned_by: string | null
+          id: string
+          ip_address: string | null
+          reason: string | null
+          wallet_address: string
+        }
+        Insert: {
+          banned_at?: string | null
+          banned_by?: string | null
+          id?: string
+          ip_address?: string | null
+          reason?: string | null
+          wallet_address: string
+        }
+        Update: {
+          banned_at?: string | null
+          banned_by?: string | null
+          id?: string
+          ip_address?: string | null
+          reason?: string | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
       chat_messages: {
         Row: {
           created_at: string | null
@@ -104,15 +158,177 @@ export type Database = {
         }
         Relationships: []
       }
+      game_settings: {
+        Row: {
+          id: string
+          setting_key: string
+          setting_value: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          setting_key: string
+          setting_value: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          setting_key?: string
+          setting_value?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      muted_users: {
+        Row: {
+          created_at: string | null
+          id: string
+          muted_by: string | null
+          muted_until: string | null
+          reason: string | null
+          wallet_address: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          muted_by?: string | null
+          muted_until?: string | null
+          reason?: string | null
+          wallet_address: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          muted_by?: string | null
+          muted_until?: string | null
+          reason?: string | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
+      raffle_tickets: {
+        Row: {
+          id: string
+          purchased_at: string | null
+          raffle_id: string | null
+          ticket_number: number
+          wallet_address: string
+        }
+        Insert: {
+          id?: string
+          purchased_at?: string | null
+          raffle_id?: string | null
+          ticket_number: number
+          wallet_address: string
+        }
+        Update: {
+          id?: string
+          purchased_at?: string | null
+          raffle_id?: string | null
+          ticket_number?: number
+          wallet_address?: string
+        }
+        Relationships: []
+      }
+      raffle_winners: {
+        Row: {
+          id: string
+          raffle_id: string | null
+          selected_by: string | null
+          ticket_number: number
+          wallet_address: string
+          won_at: string | null
+        }
+        Insert: {
+          id?: string
+          raffle_id?: string | null
+          selected_by?: string | null
+          ticket_number: number
+          wallet_address: string
+          won_at?: string | null
+        }
+        Update: {
+          id?: string
+          raffle_id?: string | null
+          selected_by?: string | null
+          ticket_number?: number
+          wallet_address?: string
+          won_at?: string | null
+        }
+        Relationships: []
+      }
+      user_levels: {
+        Row: {
+          created_at: string | null
+          id: string
+          level: number | null
+          total_wagered: number | null
+          transformation: string | null
+          updated_at: string | null
+          wallet_address: string
+          xp: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          level?: number | null
+          total_wagered?: number | null
+          transformation?: string | null
+          updated_at?: string | null
+          wallet_address: string
+          xp?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          level?: number | null
+          total_wagered?: number | null
+          transformation?: string | null
+          updated_at?: string | null
+          wallet_address?: string
+          xp?: number | null
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "moderator" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -239,6 +455,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "moderator", "user"],
+    },
   },
 } as const
