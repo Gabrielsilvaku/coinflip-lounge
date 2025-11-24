@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Header } from "@/components/Header";
 import { WalletModal } from "@/components/WalletModal";
 import { Users, Trophy, Coins } from "lucide-react";
+import { useWallet } from '@/contexts/WalletContext';
 
 const dbCharacters = [
   { name: "Goku", color: "from-orange-500 to-red-500", borderColor: "border-orange-300" },
@@ -25,13 +26,8 @@ export default function Bolada() {
   const [winner, setWinner] = useState<{id: string, character: string, bet: number} | null>(null);
   const [isSpinning, setIsSpinning] = useState(false);
   const [totalPot, setTotalPot] = useState(0);
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
+  const { walletAddress } = useWallet();
   const [showWalletModal, setShowWalletModal] = useState(false);
-
-  const handleConnect = (address: string) => {
-    setWalletAddress(address);
-    toast.success("Carteira conectada!");
-  };
 
   const handleJoin = () => {
     if (!walletAddress) {
@@ -98,7 +94,6 @@ export default function Bolada() {
       <WalletModal
         isOpen={showWalletModal}
         onClose={() => setShowWalletModal(false)}
-        onConnect={handleConnect}
       />
 
       <div className="container mx-auto px-4 py-20">

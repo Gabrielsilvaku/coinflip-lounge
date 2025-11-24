@@ -8,13 +8,6 @@ import bannerFull from "@/assets/banner-full.jpeg";
 const Home = () => {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
   const navigate = useNavigate();
-  const { setWallet } = useWallet();
-
-  const handleConnect = (address: string, walletType: string) => {
-    setWallet(address, walletType);
-    setIsWalletModalOpen(false);
-    navigate('/rifa');
-  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center relative overflow-hidden">
@@ -47,7 +40,6 @@ const Home = () => {
       <WalletModal
         isOpen={isWalletModalOpen}
         onClose={() => setIsWalletModalOpen(false)}
-        onConnect={handleConnect}
       />
     </div>
   );

@@ -6,11 +6,11 @@ import { X } from "lucide-react";
 import phantomLogo from "@/assets/phantom-logo.webp";
 import solflareLogo from "@/assets/solflare-logo.webp";
 import coin98Logo from "@/assets/coin98-logo.webp";
+import { useWallet } from "@/contexts/WalletContext";
 
 interface WalletModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConnect: (address: string, walletType: string) => void;
 }
 
 const wallets = [
@@ -31,7 +31,9 @@ const wallets = [
   },
 ];
 
-export const WalletModal = ({ isOpen, onClose, onConnect }: WalletModalProps) => {
+export const WalletModal = ({ isOpen, onClose }: WalletModalProps) => {
+  const { setWallet } = useWallet();
+
   const handleConnect = async (walletKey: string, walletName: string) => {
     try {
       const installedWallets = detectWallets();
@@ -64,7 +66,11 @@ export const WalletModal = ({ isOpen, onClose, onConnect }: WalletModalProps) =>
       const result = await connectWallet(walletKey as 'phantom' | 'solflare' | 'coin98');
       toast.dismiss();
       toast.success("Carteira conectada!");
-      onConnect(result.publicKey, walletKey);
+      
+      setWallet(result.publicKey, walletKey);
+      localStorage.setItem('walletAddress', result.publicKey);
+      localStorage.setItem('walletType', walletKey);
+      
       onClose();
     } catch (error: any) {
       toast.dismiss();
