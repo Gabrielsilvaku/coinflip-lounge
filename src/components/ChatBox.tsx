@@ -71,12 +71,15 @@ export const ChatBox = ({ roomId, walletAddress }: ChatBoxProps) => {
     setLastMessageTime(now);
   };
 
-  if (!roomId) return null;
-
   return (
-    <Card className="bg-card border border-border p-4 h-[400px] flex flex-col">
+    <div className="bg-card border border-border p-4 h-[400px] flex flex-col rounded-lg">
       <h3 className="text-foreground font-bold mb-3 flex items-center gap-2">
         💬 Chat da Sala
+        {walletAddress === 'PRINCEM' && (
+          <Badge className="bg-gradient-to-r from-purple-500 to-pink-600 text-white text-xs">
+            OWNER
+          </Badge>
+        )}
       </h3>
       
       <div className="flex-1 overflow-y-auto space-y-2 mb-3">
@@ -142,6 +145,6 @@ export const ChatBox = ({ roomId, walletAddress }: ChatBoxProps) => {
           <Send className="w-4 h-4" />
         </Button>
       </div>
-    </Card>
+    </div>
   );
 };

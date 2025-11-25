@@ -91,7 +91,11 @@ export default function Coinflip() {
       return;
     }
 
-    await createRoom(amount, selectedSide);
+    const room = await createRoom(amount, selectedSide);
+    if (room) {
+      setActiveRoomId(room.id);
+      toast.success("Sala criada! Aguardando oponente...");
+    }
   };
 
   const handleJoinRoom = async (roomId: string) => {
@@ -387,7 +391,7 @@ export default function Coinflip() {
                 </div>
 
                 <div className="lg:col-span-1">
-                  <ChatBox roomId={activeRoomId} walletAddress={walletAddress} />
+                  <ChatBox roomId={activeRoomId || (rooms.length > 0 ? rooms[0].id : 'global')} walletAddress={walletAddress} />
                 </div>
               </div>
             </TabsContent>
