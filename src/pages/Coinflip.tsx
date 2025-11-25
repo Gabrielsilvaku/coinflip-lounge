@@ -9,6 +9,8 @@ import { CoinFlip3D } from "@/components/CoinFlip3D";
 import { useCoinflipRooms } from "@/hooks/useCoinflipRooms";
 import { useCoinflipHistory } from "@/hooks/useCoinflipHistory";
 import { useWallet } from "@/contexts/WalletContext";
+import { useUserLevel } from "@/hooks/useUserLevel";
+import { ChatBox } from "@/components/ChatBox";
 import gokuCoin from "@/assets/goku-coin.png";
 import vegetaCoin from "@/assets/vegeta-coin.png";
 import { Coins, Users, Clock } from "lucide-react";
@@ -23,6 +25,8 @@ export default function Coinflip() {
   const { walletAddress } = useWallet();
   const [showWalletModal, setShowWalletModal] = useState(false);
   const [mode, setMode] = useState<'solo' | 'multiplayer'>('multiplayer');
+  const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
+  const { addXP } = useUserLevel(walletAddress);
 
   const { rooms, loading: roomsLoading, createRoom, joinRoom } = useCoinflipRooms(walletAddress);
   const { history, loading: historyLoading } = useCoinflipHistory(walletAddress);
@@ -48,14 +52,24 @@ export default function Coinflip() {
 
       toast.dismiss("flipping");
 
+      const amount = parseFloat(betAmount);
+      
       if (flipResult === side) {
         toast.success(`🎉 Você ganhou! ${flipResult === 'heads' ? 'HEADS (Goku)' : 'TAILS (Vegeta)'} venceu!`, {
           duration: 4000,
         });
+        // Add XP for winning
+        if (walletAddress) {
+          addXP(amount);
+        }
       } else {
         toast.error(`😔 Você perdeu! ${flipResult === 'heads' ? 'HEADS (Goku)' : 'TAILS (Vegeta)'} venceu!`, {
           duration: 4000,
         });
+        // Add XP for playing (even when losing)
+        if (walletAddress) {
+          addXP(amount);
+        }
       }
     }, 3000);
   };
@@ -92,6 +106,7 @@ export default function Coinflip() {
 
     if (success) {
       toast.success("Partida iniciada!");
+      setActiveRoomId(roomId);
     }
   };
 
@@ -238,7 +253,8 @@ export default function Coinflip() {
 
             <TabsContent value="multiplayer" className="mt-8">
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <Card className="bg-card border border-border p-6 lg:col-span-1">
+                <div className="lg:col-span-2 space-y-6">
+                  <Card className="bg-card border border-border p-6">
                   <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
                     <Coins className="w-5 h-5 text-primary" />
                     Criar Jogo
@@ -302,10 +318,10 @@ export default function Coinflip() {
                       Criar
                     </Button>
                   </div>
-                </Card>
+                  </Card>
 
-                <Card className="bg-card border border-border p-6 lg:col-span-2">
-                  <div className="flex items-center justify-between mb-4">
+                  <Card className="bg-card border border-border p-6">
+                    <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
                       <Users className="w-5 h-5 text-primary" />
                       TODOS OS JOGOS
@@ -367,7 +383,12 @@ export default function Coinflip() {
                       ))}
                     </div>
                   )}
-                </Card>
+                  </Card>
+                </div>
+
+                <div className="lg:col-span-1">
+                  <ChatBox roomId={activeRoomId} walletAddress={walletAddress} />
+                </div>
               </div>
             </TabsContent>
           </Tabs>
