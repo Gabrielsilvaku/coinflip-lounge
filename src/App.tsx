@@ -4,7 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { MusicPlayer } from "@/components/MusicPlayer";
+import { FloatingChat } from "@/components/FloatingChat";
 import { WalletProvider } from "@/contexts/WalletContext";
+import { useWallet } from "@/contexts/WalletContext";
 import Home from "./pages/Home";
 import Rifa from "./pages/Rifa";
 import Coinflip from "./pages/Coinflip";
@@ -16,14 +18,16 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <WalletProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <MusicPlayer />
-        <BrowserRouter>
+const AppContent = () => {
+  const { walletAddress } = useWallet();
+  
+  return (
+    <>
+      <Toaster />
+      <Sonner />
+      <MusicPlayer />
+      <FloatingChat walletAddress={walletAddress} />
+      <BrowserRouter>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/auth" element={<Auth />} />
@@ -36,6 +40,15 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
+    </>
+  );
+};
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <WalletProvider>
+      <TooltipProvider>
+        <AppContent />
       </TooltipProvider>
     </WalletProvider>
   </QueryClientProvider>
