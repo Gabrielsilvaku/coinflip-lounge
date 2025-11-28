@@ -10,6 +10,8 @@ interface ChatMessage {
   created_at: string;
 }
 
+const GLOBAL_ROOM_ID = '00000000-0000-0000-0000-000000000000';
+
 export const useChat = (roomId: string | null) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,17 +23,21 @@ export const useChat = (roomId: string | null) => {
       return;
     }
 
-    fetchMessages();
+    const actualRoomId = roomId === 'global' ? GLOBAL_ROOM_ID : roomId;
+
+    if (!actualRoomId) return;
+
+    fetchMessages(actualRoomId);
 
     const channel = supabase
-      .channel(`chat_${roomId}`)
+      .channel(`chat_${actualRoomId}`)
       .on(
         'postgres_changes',
         {
           event: 'INSERT',
           schema: 'public',
           table: 'chat_messages',
-          filter: `room_id=eq.${roomId}`
+          filter: `room_id=eq.${actualRoomId}`
         },
         (payload) => {
           setMessages((prev) => [...prev, payload.new as ChatMessage]);
@@ -44,14 +50,17 @@ export const useChat = (roomId: string | null) => {
     };
   }, [roomId]);
 
-  const fetchMessages = async () => {
-    if (!roomId) return;
+  const fetchMessages = async (actualRoomIdParam?: string | null) => {
+    const actualRoomId =
+      actualRoomIdParam ?? (roomId === 'global' ? GLOBAL_ROOM_ID : roomId);
+
+    if (!actualRoomId) return;
 
     try {
       const { data, error } = await supabase
         .from('chat_messages')
         .select('*')
-        .eq('room_id', roomId)
+        .eq('room_id', actualRoomId)
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -64,13 +73,15 @@ export const useChat = (roomId: string | null) => {
   };
 
   const sendMessage = async (walletAddress: string, message: string) => {
-    if (!roomId || !message.trim()) return;
+    const actualRoomId = roomId === 'global' ? GLOBAL_ROOM_ID : roomId;
+
+    if (!actualRoomId || !message.trim()) return;
 
     try {
       const { error } = await supabase
         .from('chat_messages')
         .insert({
-          room_id: roomId,
+          room_id: actualRoomId,
           wallet_address: walletAddress,
           message: message.trim()
         });

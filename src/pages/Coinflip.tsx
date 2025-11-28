@@ -28,7 +28,7 @@ export default function Coinflip() {
   const [activeRoomId, setActiveRoomId] = useState<string | null>(null);
   const { addXP } = useUserLevel(walletAddress);
 
-  const { rooms, loading: roomsLoading, createRoom, joinRoom } = useCoinflipRooms(walletAddress);
+  const { rooms, loading: roomsLoading, createRoom, joinRoom, completeGame } = useCoinflipRooms(walletAddress);
   const { history, loading: historyLoading } = useCoinflipHistory(walletAddress);
 
   const handleFlip = (side: CoinSide) => {
@@ -105,12 +105,26 @@ export default function Coinflip() {
     }
 
     toast.loading("Entrando na sala...", { id: "joining" });
-    const success = await joinRoom(roomId);
+    const { success, room } = await joinRoom(roomId);
     toast.dismiss("joining");
 
-    if (success) {
+    if (success && room) {
       toast.success("Partida iniciada!");
       setActiveRoomId(roomId);
+
+      setIsFlipping(true);
+      setResult(null);
+
+      const flipResult: CoinSide = Math.random() > 0.5 ? 'heads' : 'tails';
+
+      toast.loading("Girando a moeda...", { id: "multiplayer-flip" });
+
+      setTimeout(() => {
+        setResult(flipResult);
+        setIsFlipping(false);
+        toast.dismiss("multiplayer-flip");
+        completeGame(roomId, flipResult);
+      }, 3000);
     }
   };
 
@@ -323,6 +337,21 @@ export default function Coinflip() {
                     </Button>
                   </div>
                   </Card>
+
+                  {activeRoomId && (
+                    <Card className="bg-card border border-primary/40 p-6">
+                      <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+                        <Coins className="w-5 h-5 text-secondary" />
+                        Partida ativa
+                      </h2>
+                      <div className="flex justify-center">
+                        <CoinFlip3D
+                          isFlipping={isFlipping}
+                          result={result}
+                        />
+                      </div>
+                    </Card>
+                  )}
 
                   <Card className="bg-card border border-border p-6">
                     <div className="flex items-center justify-between mb-4">

@@ -72,7 +72,7 @@ export const ChatBox = ({ roomId, walletAddress }: ChatBoxProps) => {
   };
 
   return (
-    <div className="bg-card border border-border p-4 h-[400px] flex flex-col rounded-lg">
+    <div className="bg-card-glass border border-primary/40 p-4 h-[400px] flex flex-col rounded-lg">
       <h3 className="text-foreground font-bold mb-3 flex items-center gap-2">
         💬 Chat da Sala
         {walletAddress === 'PRINCEM' && (
