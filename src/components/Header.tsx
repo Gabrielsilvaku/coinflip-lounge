@@ -2,18 +2,22 @@ import { Button } from "@/components/ui/button";
 import { Bell, User, Shield, LogOut, Wallet } from "lucide-react";
 import { useState, useEffect } from "react";
 import { WalletModal } from "./WalletModal";
+import { ProfileMenu } from "./ProfileMenu";
 import { Link, useLocation } from "react-router-dom";
 import { getBalance } from "@/lib/solana";
 import { PublicKey } from "@solana/web3.js";
 import profileIcon from "@/assets/profile-icon.jpeg";
 import { useWallet } from "@/contexts/WalletContext";
 import { LevelDisplay } from "./LevelDisplay";
+import { useUserProfile } from "@/hooks/useUserProfile";
 
 export const Header = () => {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const { walletAddress } = useWallet();
   const [balance, setBalance] = useState<number>(0);
   const location = useLocation();
+  const { getDisplayName } = useUserProfile(walletAddress);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -116,11 +120,11 @@ export const Header = () => {
                 </div>
 
                 <Button
-                  onClick={() => setIsWalletModalOpen(true)}
+                  onClick={() => setIsProfileMenuOpen(true)}
                   className="bg-primary text-primary-foreground hover:bg-primary/90"
                 >
                   <User className="mr-2 h-4 w-4" />
-                  {walletAddress.slice(0, 4)}...{walletAddress.slice(-4)}
+                  {getDisplayName()}
                 </Button>
               </>
             ) : (
@@ -140,6 +144,13 @@ export const Header = () => {
         isOpen={isWalletModalOpen}
         onClose={() => setIsWalletModalOpen(false)}
       />
+
+      {isProfileMenuOpen && walletAddress && (
+        <ProfileMenu
+          walletAddress={walletAddress}
+          onClose={() => setIsProfileMenuOpen(false)}
+        />
+      )}
     </>
   );
 };

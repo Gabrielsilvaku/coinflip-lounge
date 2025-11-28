@@ -3,7 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Send } from 'lucide-react';
+import { Send, User } from 'lucide-react';
 import { useChat } from '@/hooks/useChat';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -18,6 +18,7 @@ export const ChatBox = ({ roomId, walletAddress }: ChatBoxProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [lastMessageTime, setLastMessageTime] = useState(0);
+  const [profiles, setProfiles] = useState<Record<string, { display_name: string | null }>>({});
 
   useEffect(() => {
     if (!walletAddress) return;
@@ -26,6 +27,22 @@ export const ChatBox = ({ roomId, walletAddress }: ChatBoxProps) => {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    
+    // Fetch profiles for new messages
+    const uniqueWallets = [...new Set(messages.map(m => m.wallet_address))];
+    uniqueWallets.forEach(async (wallet) => {
+      if (!profiles[wallet] && wallet !== 'PRINCEM') {
+        const { data } = await supabase
+          .from('user_profiles')
+          .select('display_name')
+          .eq('wallet_address', wallet)
+          .single();
+        
+        if (data) {
+          setProfiles(prev => ({ ...prev, [wallet]: data }));
+        }
+      }
+    });
   }, [messages]);
 
   const checkMuteStatus = async () => {
@@ -99,13 +116,19 @@ export const ChatBox = ({ roomId, walletAddress }: ChatBoxProps) => {
                   : 'bg-muted mr-8'
               }`}
             >
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-mono text-primary">
-                  {msg.wallet_address === 'PRINCEM' ? 'PRINCEM' : `${msg.wallet_address.slice(0, 4)}...${msg.wallet_address.slice(-4)}`}
-                </span>
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <div className="flex items-center gap-1">
+                  <User className="w-3 h-3 text-primary" />
+                  <span className="text-xs font-bold text-primary">
+                    {msg.wallet_address === 'PRINCEM' 
+                      ? 'PRINCEM' 
+                      : profiles[msg.wallet_address]?.display_name || `${msg.wallet_address.slice(0, 4)}...${msg.wallet_address.slice(-4)}`
+                    }
+                  </span>
+                </div>
                 {msg.wallet_address === 'PRINCEM' && (
-                  <Badge className="bg-gradient-to-r from-purple-500 to-pink-600 text-white text-xs px-1 py-0">
-                    M MAJIN
+                  <Badge className="bg-gradient-to-r from-primary to-secondary text-primary-foreground text-xs px-1.5 py-0 font-bold">
+                    Ⓜ MAJIN
                   </Badge>
                 )}
                 <span className="text-xs text-muted-foreground">

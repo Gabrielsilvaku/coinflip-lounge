@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Minimize2 } from 'lucide-react';
+import { MessageCircle, X, Send, Minimize2, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useChat } from '@/hooks/useChat';
+import { supabase } from '@/integrations/supabase/client';
 
 interface FloatingChatProps {
   walletAddress: string | null;
@@ -17,9 +18,26 @@ export const FloatingChat = ({ walletAddress }: FloatingChatProps) => {
   const [lastMessageTime, setLastMessageTime] = useState(0);
   const { messages, sendMessage } = useChat('global');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [profiles, setProfiles] = useState<Record<string, { display_name: string | null }>>({});
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    
+    // Fetch profiles for new messages
+    const uniqueWallets = [...new Set(messages.map(m => m.wallet_address))];
+    uniqueWallets.forEach(async (wallet) => {
+      if (!profiles[wallet] && wallet !== 'PRINCEM') {
+        const { data } = await supabase
+          .from('user_profiles')
+          .select('display_name')
+          .eq('wallet_address', wallet)
+          .single();
+        
+        if (data) {
+          setProfiles(prev => ({ ...prev, [wallet]: data }));
+        }
+      }
+    });
   }, [messages]);
 
   const handleSend = () => {
@@ -103,11 +121,15 @@ export const FloatingChat = ({ walletAddress }: FloatingChatProps) => {
                       }`}
                     >
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <span className="text-xs font-mono text-primary font-bold">
-                          {msg.wallet_address === 'PRINCEM'
-                            ? 'PRINCEM'
-                            : `${msg.wallet_address.slice(0, 4)}...${msg.wallet_address.slice(-4)}`}
-                        </span>
+                        <div className="flex items-center gap-1">
+                          <User className="w-3 h-3 text-primary" />
+                          <span className="text-xs font-bold text-primary">
+                            {msg.wallet_address === 'PRINCEM'
+                              ? 'PRINCEM'
+                              : profiles[msg.wallet_address]?.display_name || `${msg.wallet_address.slice(0, 4)}...${msg.wallet_address.slice(-4)}`
+                            }
+                          </span>
+                        </div>
                         {msg.wallet_address === 'PRINCEM' && (
                           <Badge className="bg-gradient-to-r from-primary to-secondary text-primary-foreground text-xs px-1.5 py-0 font-bold">
                             Ⓜ MAJIN
