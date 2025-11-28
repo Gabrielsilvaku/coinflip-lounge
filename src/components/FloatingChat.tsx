@@ -45,7 +45,7 @@ export const FloatingChat = ({ walletAddress }: FloatingChatProps) => {
         >
           <MessageCircle className="w-6 h-6 text-white" />
           {messages.length > 0 && (
-            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full text-xs text-white flex items-center justify-center font-bold">
+            <span className="absolute -top-1 -right-1 w-5 h-5 bg-destructive rounded-full text-xs text-destructive-foreground flex items-center justify-center font-bold">
               {messages.length > 9 ? '9+' : messages.length}
             </span>
           )}
@@ -109,7 +109,7 @@ export const FloatingChat = ({ walletAddress }: FloatingChatProps) => {
                             : `${msg.wallet_address.slice(0, 4)}...${msg.wallet_address.slice(-4)}`}
                         </span>
                         {msg.wallet_address === 'PRINCEM' && (
-                          <Badge className="bg-gradient-to-r from-purple-500 to-pink-600 text-white text-xs px-1.5 py-0 font-bold">
+                          <Badge className="bg-gradient-to-r from-primary to-secondary text-primary-foreground text-xs px-1.5 py-0 font-bold">
                             Ⓜ MAJIN
                           </Badge>
                         )}
