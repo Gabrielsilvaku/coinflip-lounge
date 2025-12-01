@@ -41,6 +41,27 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_users: {
+        Row: {
+          created_at: string | null
+          id: string
+          role: string | null
+          wallet_address: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          role?: string | null
+          wallet_address: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          role?: string | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
       banned_users: {
         Row: {
           banned_at: string | null
@@ -182,6 +203,80 @@ export type Database = {
         }
         Relationships: []
       }
+      jackpot_bets: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          round_id: string | null
+          ticket_end: number
+          ticket_start: number
+          transaction_signature: string | null
+          wallet_address: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          round_id?: string | null
+          ticket_end: number
+          ticket_start: number
+          transaction_signature?: string | null
+          wallet_address: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          round_id?: string | null
+          ticket_end?: number
+          ticket_start?: number
+          transaction_signature?: string | null
+          wallet_address?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jackpot_bets_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "jackpot_rounds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      jackpot_rounds: {
+        Row: {
+          completed_at: string | null
+          id: string
+          round_number: number
+          started_at: string | null
+          status: string | null
+          total_pot: number | null
+          winner_ticket_number: number | null
+          winner_wallet: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          id?: string
+          round_number?: number
+          started_at?: string | null
+          status?: string | null
+          total_pot?: number | null
+          winner_ticket_number?: number | null
+          winner_wallet?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          id?: string
+          round_number?: number
+          started_at?: string | null
+          status?: string | null
+          total_pot?: number | null
+          winner_ticket_number?: number | null
+          winner_wallet?: string | null
+        }
+        Relationships: []
+      }
       muted_users: {
         Row: {
           created_at: string | null
@@ -205,6 +300,66 @@ export type Database = {
           muted_by?: string | null
           muted_until?: string | null
           reason?: string | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
+      raffle_config: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          id: string
+          prize_amount: number
+          status: string | null
+          ticket_price: number
+          winner_ticket: number | null
+          winner_wallet: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          prize_amount: number
+          status?: string | null
+          ticket_price: number
+          winner_ticket?: number | null
+          winner_wallet?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          id?: string
+          prize_amount?: number
+          status?: string | null
+          ticket_price?: number
+          winner_ticket?: number | null
+          winner_wallet?: string | null
+        }
+        Relationships: []
+      }
+      raffle_purchases: {
+        Row: {
+          amount_paid: number
+          created_at: string | null
+          id: string
+          ticket_number: number
+          transaction_signature: string | null
+          wallet_address: string
+        }
+        Insert: {
+          amount_paid: number
+          created_at?: string | null
+          id?: string
+          ticket_number: number
+          transaction_signature?: string | null
+          wallet_address: string
+        }
+        Update: {
+          amount_paid?: number
+          created_at?: string | null
+          id?: string
+          ticket_number?: number
+          transaction_signature?: string | null
           wallet_address?: string
         }
         Relationships: []
@@ -257,6 +412,161 @@ export type Database = {
           ticket_number?: number
           wallet_address?: string
           won_at?: string | null
+        }
+        Relationships: []
+      }
+      referral_earnings: {
+        Row: {
+          amount: number
+          created_at: string | null
+          id: string
+          referral_id: string | null
+          source: string
+          transaction_signature: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string | null
+          id?: string
+          referral_id?: string | null
+          source: string
+          transaction_signature?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string | null
+          id?: string
+          referral_id?: string | null
+          source?: string
+          transaction_signature?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_earnings_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "referrals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referrals: {
+        Row: {
+          created_at: string | null
+          fraud_detected: boolean | null
+          id: string
+          referee_wallet: string
+          referral_code: string
+          referrer_wallet: string
+          total_earned: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          fraud_detected?: boolean | null
+          id?: string
+          referee_wallet: string
+          referral_code: string
+          referrer_wallet: string
+          total_earned?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          fraud_detected?: boolean | null
+          id?: string
+          referee_wallet?: string
+          referral_code?: string
+          referrer_wallet?: string
+          total_earned?: number | null
+        }
+        Relationships: []
+      }
+      support_tickets: {
+        Row: {
+          admin_response: string | null
+          created_at: string | null
+          id: string
+          message: string
+          status: string | null
+          subject: string
+          updated_at: string | null
+          wallet_address: string
+        }
+        Insert: {
+          admin_response?: string | null
+          created_at?: string | null
+          id?: string
+          message: string
+          status?: string | null
+          subject: string
+          updated_at?: string | null
+          wallet_address: string
+        }
+        Update: {
+          admin_response?: string | null
+          created_at?: string | null
+          id?: string
+          message?: string
+          status?: string | null
+          subject?: string
+          updated_at?: string | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
+      transformations: {
+        Row: {
+          aura_color: string
+          aura_effect: string | null
+          created_at: string | null
+          description: string | null
+          id: number
+          level_required: number
+          name: string
+        }
+        Insert: {
+          aura_color: string
+          aura_effect?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          level_required: number
+          name: string
+        }
+        Update: {
+          aura_color?: string
+          aura_effect?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: number
+          level_required?: number
+          name?: string
+        }
+        Relationships: []
+      }
+      treasury_config: {
+        Row: {
+          created_at: string | null
+          house_edge_percent: number | null
+          id: string
+          referral_percent: number | null
+          updated_at: string | null
+          wallet_address: string
+        }
+        Insert: {
+          created_at?: string | null
+          house_edge_percent?: number | null
+          id?: string
+          referral_percent?: number | null
+          updated_at?: string | null
+          wallet_address: string
+        }
+        Update: {
+          created_at?: string | null
+          house_edge_percent?: number | null
+          id?: string
+          referral_percent?: number | null
+          updated_at?: string | null
+          wallet_address?: string
         }
         Relationships: []
       }
@@ -338,6 +648,87 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      user_xp: {
+        Row: {
+          created_at: string | null
+          current_transformation: string | null
+          id: string
+          level: number | null
+          total_wagered: number | null
+          updated_at: string | null
+          wallet_address: string
+          xp: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          current_transformation?: string | null
+          id?: string
+          level?: number | null
+          total_wagered?: number | null
+          updated_at?: string | null
+          wallet_address: string
+          xp?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          current_transformation?: string | null
+          id?: string
+          level?: number | null
+          total_wagered?: number | null
+          updated_at?: string | null
+          wallet_address?: string
+          xp?: number | null
+        }
+        Relationships: []
+      }
+      wallet_links: {
+        Row: {
+          created_at: string | null
+          id: string
+          user_id: string | null
+          wallet_address: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          user_id?: string | null
+          wallet_address: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          user_id?: string | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
+      xp_logs: {
+        Row: {
+          amount_wagered: number | null
+          created_at: string | null
+          id: string
+          source: string
+          wallet_address: string
+          xp_gained: number
+        }
+        Insert: {
+          amount_wagered?: number | null
+          created_at?: string | null
+          id?: string
+          source: string
+          wallet_address: string
+          xp_gained: number
+        }
+        Update: {
+          amount_wagered?: number | null
+          created_at?: string | null
+          id?: string
+          source?: string
+          wallet_address?: string
+          xp_gained?: number
         }
         Relationships: []
       }
