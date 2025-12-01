@@ -27,7 +27,7 @@ export const ProfileMenu = ({ walletAddress, onClose }: ProfileMenuProps) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-      <Card className="bg-card border-2 border-primary/50 p-6 max-w-md w-full mx-4 relative">
+      <Card className="bg-card border-2 border-primary/50 p-6 max-w-lg w-full mx-4 relative">
         <Button
           onClick={onClose}
           size="icon"
@@ -38,8 +38,8 @@ export const ProfileMenu = ({ walletAddress, onClose }: ProfileMenuProps) => {
         </Button>
 
         <div className="text-center mb-6">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary to-secondary mx-auto mb-4 flex items-center justify-center">
-            <User className="w-10 h-10 text-primary-foreground" />
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-secondary mx-auto mb-4 flex items-center justify-center border-4 border-background shadow-lg">
+            <User className="w-12 h-12 text-primary-foreground" />
           </div>
 
           {isEditing ? (
@@ -77,7 +77,7 @@ export const ProfileMenu = ({ walletAddress, onClose }: ProfileMenuProps) => {
           )}
 
           <p className="text-xs text-muted-foreground font-mono mt-2">
-            {walletAddress.slice(0, 8)}...{walletAddress.slice(-8)}
+            {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
           </p>
         </div>
 

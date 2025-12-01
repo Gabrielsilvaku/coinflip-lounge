@@ -9,7 +9,7 @@ import { useAdmin } from '@/hooks/useAdmin';
 import { useWallet } from '@/contexts/WalletContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Shield, Ban, MessageSquareOff, Settings, Trophy, Activity } from 'lucide-react';
+import { Shield, Ban, MessageSquareOff, Settings, Trophy, Activity, Wallet } from 'lucide-react';
 
 export default function Admin() {
   const { walletAddress } = useWallet();
@@ -22,6 +22,7 @@ export default function Admin() {
   const [houseEdge, setHouseEdge] = useState(3.5);
   const [raffleTicket, setRaffleTicket] = useState('');
   const [raffleWallet, setRaffleWallet] = useState('');
+  const [treasuryWallet, setTreasuryWallet] = useState('');
   
   const [bannedUsers, setBannedUsers] = useState<any[]>([]);
   const [mutedUsers, setMutedUsers] = useState<any[]>([]);
@@ -38,13 +39,14 @@ export default function Admin() {
 
   const fetchData = async () => {
     try {
-      const [banned, muted, rooms, tickets, actionLogs, settings] = await Promise.all([
+      const [banned, muted, rooms, tickets, actionLogs, settings, treasury] = await Promise.all([
         supabase.from('banned_users').select('*').order('banned_at', { ascending: false }),
         supabase.from('muted_users').select('*').order('created_at', { ascending: false }),
         supabase.from('coinflip_rooms').select('*').in('status', ['waiting', 'playing']),
         supabase.from('raffle_tickets').select('*').order('purchased_at', { ascending: false }).limit(100),
         supabase.from('action_logs').select('*').order('created_at', { ascending: false }).limit(50),
-        supabase.from('game_settings').select('*').eq('setting_key', 'house_edge').single()
+        supabase.from('game_settings').select('*').eq('setting_key', 'house_edge').single(),
+        supabase.from('treasury_config').select('*').single()
       ]);
 
       if (banned.data) setBannedUsers(banned.data);
@@ -53,6 +55,7 @@ export default function Admin() {
       if (tickets.data) setRaffleTickets(tickets.data);
       if (actionLogs.data) setLogs(actionLogs.data);
       if (settings.data) setHouseEdge(parseFloat(settings.data.setting_value));
+      if (treasury.data) setTreasuryWallet(treasury.data.wallet_address);
     } catch (error) {
       console.error('Error fetching admin data:', error);
     }
@@ -277,6 +280,39 @@ export default function Admin() {
 
           <TabsContent value="settings">
             <Card className="p-6">
+              <h2 className="text-xl font-bold mb-4">Carteira da Casa (Treasury)</h2>
+              <div className="space-y-3">
+                <Input
+                  placeholder="Endereço da carteira Solana"
+                  value={treasuryWallet}
+                  onChange={(e) => setTreasuryWallet(e.target.value)}
+                />
+                <Button 
+                  onClick={async () => {
+                    try {
+                      const { error } = await supabase
+                        .from('treasury_config')
+                        .update({ wallet_address: treasuryWallet })
+                        .eq('wallet_address', treasuryWallet);
+                      
+                      if (error) throw error;
+                      toast.success('Carteira atualizada!');
+                    } catch (error) {
+                      console.error('Error updating treasury:', error);
+                      toast.error('Erro ao atualizar carteira');
+                    }
+                  }}
+                  className="w-full"
+                >
+                  Atualizar Carteira da Casa
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Esta carteira receberá as taxas de 3.5% de todas as apostas
+                </p>
+              </div>
+            </Card>
+
+            <Card className="p-6 mt-4">
               <h2 className="text-xl font-bold mb-4">Taxa da Casa</h2>
               <div className="space-y-3">
                 <Input
