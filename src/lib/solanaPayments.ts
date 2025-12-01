@@ -1,25 +1,57 @@
 import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { supabase } from '@/integrations/supabase/client';
 
 const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
 
-// Endereço da casa (treasury) - SUBSTITUA COM SEU ENDEREÇO REAL
-const HOUSE_WALLET = new PublicKey('YOUR_TREASURY_WALLET_ADDRESS_HERE');
+// Get house wallet from database
+let HOUSE_WALLET: PublicKey | null = null;
+
+const getHouseWallet = async (): Promise<PublicKey> => {
+  if (HOUSE_WALLET) return HOUSE_WALLET;
+  
+  const { data } = await supabase
+    .from('treasury_config')
+    .select('wallet_address')
+    .single();
+  
+  if (data?.wallet_address && data.wallet_address !== 'YOUR_TREASURY_WALLET_HERE') {
+    HOUSE_WALLET = new PublicKey(data.wallet_address);
+    return HOUSE_WALLET;
+  }
+  
+  throw new Error('Treasury wallet not configured');
+};
 
 export const sendSolPayment = async (
   fromWallet: any,
-  amount: number
-): Promise<{ success: boolean; signature?: string; error?: string }> => {
+  amount: number,
+  applyHouseEdge: boolean = true
+): Promise<{ success: boolean; signature?: string; error?: string; netAmount?: number }> => {
   try {
     if (!fromWallet || !fromWallet.publicKey) {
       return { success: false, error: 'Wallet não conectada' };
     }
 
-    const lamports = Math.floor(amount * LAMPORTS_PER_SOL);
+    const houseWallet = await getHouseWallet();
+    
+    // Apply 3.5% house edge if enabled
+    let netAmount = amount;
+    if (applyHouseEdge) {
+      const { data: config } = await supabase
+        .from('treasury_config')
+        .select('house_edge_percent')
+        .single();
+      
+      const houseEdgePercent = config?.house_edge_percent || 3.5;
+      netAmount = amount * (1 - houseEdgePercent / 100);
+    }
+
+    const lamports = Math.floor(netAmount * LAMPORTS_PER_SOL);
 
     const transaction = new Transaction().add(
       SystemProgram.transfer({
         fromPubkey: fromWallet.publicKey,
-        toPubkey: HOUSE_WALLET,
+        toPubkey: houseWallet,
         lamports,
       })
     );
@@ -35,7 +67,7 @@ export const sendSolPayment = async (
     // Aguardar confirmação
     await connection.confirmTransaction(signature, 'confirmed');
 
-    return { success: true, signature };
+    return { success: true, signature, netAmount };
   } catch (error) {
     console.error('Erro ao enviar pagamento:', error);
     return { 
