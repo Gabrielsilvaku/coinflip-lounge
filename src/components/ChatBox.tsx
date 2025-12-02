@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Send, User } from 'lucide-react';
 import { useChat } from '@/hooks/useChat';
+import { useChatUserInfo } from '@/hooks/useChatUserInfo';
 import { supabase } from '@/integrations/supabase/client';
 
 interface ChatBoxProps {
@@ -18,7 +19,9 @@ export const ChatBox = ({ roomId, walletAddress }: ChatBoxProps) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [isMuted, setIsMuted] = useState(false);
   const [lastMessageTime, setLastMessageTime] = useState(0);
-  const [profiles, setProfiles] = useState<Record<string, { display_name: string | null }>>({});
+  
+  const walletAddresses = messages.map(m => m.wallet_address);
+  const userInfoMap = useChatUserInfo(walletAddresses);
 
   useEffect(() => {
     if (!walletAddress) return;
@@ -27,22 +30,6 @@ export const ChatBox = ({ roomId, walletAddress }: ChatBoxProps) => {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    
-    // Fetch profiles for new messages
-    const uniqueWallets = [...new Set(messages.map(m => m.wallet_address))];
-    uniqueWallets.forEach(async (wallet) => {
-      if (!profiles[wallet] && wallet !== 'PRINCEM') {
-        const { data } = await supabase
-          .from('user_profiles')
-          .select('display_name')
-          .eq('wallet_address', wallet)
-          .single();
-        
-        if (data) {
-          setProfiles(prev => ({ ...prev, [wallet]: data }));
-        }
-      }
-    });
   }, [messages]);
 
   const checkMuteStatus = async () => {
@@ -105,42 +92,68 @@ export const ChatBox = ({ roomId, walletAddress }: ChatBoxProps) => {
             Nenhuma mensagem ainda. Seja o primeiro!
           </p>
         ) : (
-          messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`p-2 rounded-lg ${
-                msg.wallet_address === walletAddress
-                  ? 'bg-primary/20 ml-8'
-                  : msg.wallet_address === 'PRINCEM'
-                  ? 'bg-gradient-to-r from-purple-500/20 to-pink-600/20 border border-purple-500/50'
-                  : 'bg-muted mr-8'
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <div className="flex items-center gap-1">
-                  <User className="w-3 h-3 text-primary" />
-                  <span className="text-xs font-bold text-primary">
-                    {msg.wallet_address === 'PRINCEM' 
-                      ? 'PRINCEM' 
-                      : profiles[msg.wallet_address]?.display_name || `${msg.wallet_address.slice(0, 4)}...${msg.wallet_address.slice(-4)}`
-                    }
-                  </span>
-                </div>
-                {msg.wallet_address === 'PRINCEM' && (
-                  <Badge className="bg-gradient-to-r from-primary to-secondary text-primary-foreground text-xs px-1.5 py-0 font-bold">
-                    Ⓜ MAJIN
-                  </Badge>
+          messages.map((msg) => {
+            const userInfo = userInfoMap[msg.wallet_address];
+            const isOwner = msg.wallet_address === 'PRINCEM';
+            const displayName = isOwner 
+              ? 'PRINCEM' 
+              : userInfo?.display_name || `${msg.wallet_address.slice(0, 4)}...${msg.wallet_address.slice(-4)}`;
+            
+            return (
+              <div
+                key={msg.id}
+                className={`p-2 rounded-lg relative overflow-hidden ${
+                  msg.wallet_address === walletAddress
+                    ? 'bg-primary/20 ml-8'
+                    : isOwner
+                    ? 'bg-gradient-to-r from-purple-500/20 to-pink-600/20 border border-purple-500/50'
+                    : 'bg-muted mr-8'
+                }`}
+              >
+                {/* Aura effect */}
+                {userInfo && userInfo.level > 0 && (
+                  <div className={`absolute inset-0 bg-gradient-to-r ${userInfo.aura_color} opacity-10 animate-pulse`} />
                 )}
-                <span className="text-xs text-muted-foreground">
-                  {new Date(msg.created_at).toLocaleTimeString('pt-BR', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </span>
+                
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <div className="flex items-center gap-1">
+                      <User className="w-3 h-3 text-primary" />
+                      <span className={`text-xs font-bold bg-gradient-to-r ${userInfo?.aura_color || 'from-primary to-primary'} bg-clip-text text-transparent`}>
+                        {displayName}
+                      </span>
+                    </div>
+                    
+                    {userInfo && userInfo.level > 0 && (
+                      <Badge className={`bg-gradient-to-r ${userInfo.aura_color} text-white text-xs px-1.5 py-0 font-bold border-0`}>
+                        Lv.{userInfo.level}
+                      </Badge>
+                    )}
+                    
+                    {userInfo?.transformation && (
+                      <Badge className={`bg-gradient-to-r ${userInfo.aura_color} text-white text-xs px-1.5 py-0 font-bold border-0`}>
+                        {userInfo.transformation}
+                      </Badge>
+                    )}
+                    
+                    {isOwner && (
+                      <Badge className="bg-gradient-to-r from-primary to-secondary text-primary-foreground text-xs px-1.5 py-0 font-bold">
+                        Ⓜ MAJIN
+                      </Badge>
+                    )}
+                    
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(msg.created_at).toLocaleTimeString('pt-BR', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                  <p className="text-sm text-foreground break-words">{msg.message}</p>
+                </div>
               </div>
-              <p className="text-sm text-foreground break-words">{msg.message}</p>
-            </div>
-          ))
+            );
+          })
         )}
         <div ref={messagesEndRef} />
       </div>
