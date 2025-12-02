@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAdmin } from '@/hooks/useAdmin';
 import { useWallet } from '@/contexts/WalletContext';
+import { useJackpot } from '@/hooks/useJackpot';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Shield, Ban, MessageSquareOff, Settings, Trophy, Activity, Wallet } from 'lucide-react';
@@ -14,6 +15,7 @@ import { Shield, Ban, MessageSquareOff, Settings, Trophy, Activity, Wallet } fro
 export default function Admin() {
   const { walletAddress } = useWallet();
   const { isAdmin, loading, banUser, unbanUser, muteUser, unmuteUser, updateHouseEdge, selectRaffleWinner } = useAdmin(walletAddress);
+  const { currentRound, bets } = useJackpot();
   
   const [targetWallet, setTargetWallet] = useState('');
   const [banReason, setBanReason] = useState('');
@@ -124,6 +126,10 @@ export default function Admin() {
             <TabsTrigger value="raffle">
               <Trophy className="w-4 h-4 mr-2" />
               Rifa
+            </TabsTrigger>
+            <TabsTrigger value="jackpot">
+              <Trophy className="w-4 h-4 mr-2" />
+              Jackpot
             </TabsTrigger>
             <TabsTrigger value="settings">
               <Settings className="w-4 h-4 mr-2" />
@@ -274,6 +280,21 @@ export default function Admin() {
                     <span className="font-bold">#{ticket.ticket_number}</span> - {ticket.wallet_address.slice(0, 8)}...
                   </div>
                 ))}
+              </div>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="jackpot">
+            <Card className="p-6">
+              <h2 className="text-xl font-bold mb-4">Rodadas de Jackpot</h2>
+              <div className="space-y-4">
+                <div className="p-4 bg-muted rounded-lg">
+                  <p className="text-sm text-muted-foreground">Rodada Atual</p>
+                  <p className="text-2xl font-bold">{currentRound?.round_number || 'N/A'}</p>
+                  <p className="text-sm mt-2">Status: <Badge>{currentRound?.status || 'N/A'}</Badge></p>
+                  <p className="text-sm">Prêmio: {currentRound?.total_pot?.toFixed(4) || '0.0000'} SOL</p>
+                  <p className="text-sm">Participantes: {bets.length}</p>
+                </div>
               </div>
             </Card>
           </TabsContent>
