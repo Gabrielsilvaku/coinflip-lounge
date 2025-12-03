@@ -5,11 +5,11 @@ import { WalletModal } from "./WalletModal";
 import { ProfileMenu } from "./ProfileMenu";
 import { Link, useLocation } from "react-router-dom";
 import { getBalance } from "@/lib/solana";
-import { PublicKey } from "@solana/web3.js";
 import profileIcon from "@/assets/profile-icon.jpeg";
 import { useWallet } from "@/contexts/WalletContext";
 import { LevelDisplay } from "./LevelDisplay";
 import { useUserProfile } from "@/hooks/useUserProfile";
+import { OWNER_WALLET } from "@/lib/config";
 
 export const Header = () => {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
@@ -25,8 +25,7 @@ export const Header = () => {
     if (walletAddress) {
       const fetchBalance = async () => {
         try {
-          const publicKey = new PublicKey(walletAddress);
-          const bal = await getBalance(publicKey);
+          const bal = await getBalance(walletAddress);
           setBalance(bal);
         } catch (error) {
           console.error('Error fetching balance:', error);
@@ -80,7 +79,7 @@ export const Header = () => {
                 Bolada
               </Button>
             </Link>
-            {walletAddress === 'PRINCEM' && (
+            {walletAddress === OWNER_WALLET && (
               <Link to="/admin">
                 <Button
                   variant="ghost"

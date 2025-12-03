@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { OWNER_WALLET } from '@/lib/config';
 
 export const useAdmin = (walletAddress: string | null) => {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -17,8 +18,7 @@ export const useAdmin = (walletAddress: string | null) => {
       return;
     }
 
-    // Check if PRINCEM (owner)
-    if (walletAddress === 'PRINCEM') {
+    if (walletAddress === OWNER_WALLET) {
       setIsAdmin(true);
       setLoading(false);
       return;

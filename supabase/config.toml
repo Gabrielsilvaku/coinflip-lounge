@@ -1,1 +1,4 @@
 project_id = "hqkzkqosozgyruafnxth"
+
+[functions.wallet-balance]
+verify_jwt = false

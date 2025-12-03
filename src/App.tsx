@@ -15,6 +15,7 @@ import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import RaffleEnhanced from "./pages/RaffleEnhanced";
 import NotFound from "./pages/NotFound";
+import { OWNER_WALLET } from "@/lib/config";
 
 const queryClient = new QueryClient();
 
@@ -34,7 +35,7 @@ const AppContent = () => {
             <Route path="/rifa" element={<Rifa />} />
             <Route path="/coinflip" element={<Coinflip />} />
             <Route path="/bolada" element={<Bolada />} />
-            <Route path="/admin" element={<Admin />} />
+            {walletAddress === OWNER_WALLET && (<Route path="/admin" element={<Admin />} />)}
             <Route path="/raffle" element={<RaffleEnhanced />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
