@@ -2,17 +2,21 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trophy, Timer, Users, Coins } from "lucide-react";
+import { Trophy, Timer, Users, Coins, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { useJackpot } from "@/hooks/useJackpot";
 import { useWallet } from "@/contexts/WalletContext";
+import { useChatUserInfo } from "@/hooks/useChatUserInfo";
+import { AuraAvatar } from "@/components/AuraAvatar";
 import { toast } from "sonner";
-import gogetaGif from "@/assets/gogeta.gif";
 
 export const JackpotWheel = () => {
-  const { currentRound, bets, loading, timeLeft, isDrawing, placeBet } = useJackpot();
+  const { currentRound, bets, loading, timeLeft, isDrawing, placeBet, lastWinner } = useJackpot();
   const { walletAddress } = useWallet();
   const [betAmount, setBetAmount] = useState('0.1');
+
+  const walletAddresses = bets.map(b => b.wallet_address);
+  const userInfoMap = useChatUserInfo(walletAddresses);
 
   const handlePlaceBet = async () => {
     if (!walletAddress) {
@@ -30,9 +34,11 @@ export const JackpotWheel = () => {
   };
 
   const formatTime = (seconds: number) => {
+    if (seconds <= 0) return 'Espera...';
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    if (mins > 0) return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${secs}s`;
   };
 
   if (loading) {
@@ -44,116 +50,170 @@ export const JackpotWheel = () => {
   }
 
   const totalTickets = bets.reduce((sum, bet) => sum + (bet.ticket_end - bet.ticket_start + 1), 0);
+  const myBet = bets.find(b => b.wallet_address === walletAddress);
+  const myTickets = myBet ? myBet.ticket_end - myBet.ticket_start + 1 : 0;
+  const myChance = totalTickets > 0 && myTickets > 0 ? ((myTickets / totalTickets) * 100).toFixed(2) : '0.00';
 
   return (
     <div className="space-y-6">
-      {/* Timer and Prize Pool */}
-      <Card className="bg-gradient-to-br from-primary/20 via-card to-secondary/20 border-2 border-primary/50 p-6">
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="flex items-center justify-center gap-4">
-            <Timer className="w-10 h-10 text-primary animate-pulse" />
-            <div>
-              <p className="text-sm text-muted-foreground">Timer</p>
-              <p className="text-4xl font-bold text-primary">{formatTime(timeLeft)}</p>
-            </div>
+      {/* Header with Logo and Bet Input */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="text-4xl font-bold text-primary flex items-center gap-2">
+            <span className="text-secondary">⊙</span> BOLADA
           </div>
-          
-          <div className="flex items-center justify-center gap-4">
-            <Trophy className="w-10 h-10 text-secondary" />
-            <div>
-              <p className="text-sm text-muted-foreground">Prêmio Total</p>
-              <p className="text-4xl font-bold text-secondary">
-                {currentRound?.total_pot.toFixed(4) || '0.0000'} SOL
-              </p>
-            </div>
-          </div>
+          <p className="text-sm text-muted-foreground">O vencedor leva tudo...</p>
         </div>
-      </Card>
 
-      {/* Bet Input */}
-      <Card className="bg-card border-2 border-primary/50 p-6">
-        <div className="space-y-4">
-          <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Valor da Aposta ~$0</span>
+          <div className="flex items-center gap-2 bg-card border border-border rounded-lg px-3 py-2">
+            <span className="text-primary font-bold">◎</span>
             <Input
               type="number"
               step="0.001"
               min="0.001"
               value={betAmount}
               onChange={(e) => setBetAmount(e.target.value)}
-              placeholder="Valor da aposta (min: 0.001 SOL)"
-              className="bg-background text-foreground border-primary/50"
+              className="w-24 bg-transparent border-0 p-0 text-foreground focus-visible:ring-0"
             />
-            <Button
-              onClick={handlePlaceBet}
-              disabled={!walletAddress || isDrawing || timeLeft === 0}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-8 whitespace-nowrap"
-            >
-              <Coins className="w-5 h-5 mr-2" />
-              Apostar
-            </Button>
           </div>
-
-          <div className="flex gap-2">
-            {[0.001, 0.01, 0.1, 1].map((amount) => (
-              <Button
-                key={amount}
-                onClick={() => setBetAmount(amount.toString())}
-                variant="outline"
-                size="sm"
-                className="flex-1 border-primary/50 hover:bg-primary/20"
-              >
-                {amount} SOL
-              </Button>
-            ))}
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setBetAmount((parseFloat(betAmount) + 0.1).toFixed(3))}
+            className="border-primary text-primary hover:bg-primary/10"
+          >
+            +0.1
+          </Button>
+          <Button
+            onClick={handlePlaceBet}
+            disabled={!walletAddress || isDrawing || timeLeft === 0}
+            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-6"
+          >
+            Lugar Apostar
+          </Button>
         </div>
-      </Card>
+      </div>
 
-      {/* Participants List */}
-      <Card className="bg-card border-2 border-primary/50 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-bold flex items-center gap-2">
-            <Users className="w-6 h-6 text-primary" />
-            Participantes ({bets.length})
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            Total: {totalTickets} tickets
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="bg-gradient-to-br from-primary/20 to-primary/5 border-primary/50 p-4 text-center">
+          <p className="text-2xl md:text-3xl font-bold text-primary">
+            ◎ {currentRound?.total_pot.toFixed(3) || '0.000'}
           </p>
-        </div>
+          <p className="text-xs text-muted-foreground mt-1">Valor do Jackpot</p>
+        </Card>
 
-        <div className="space-y-2 max-h-96 overflow-y-auto">
-          {bets.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              Nenhuma aposta ainda. Seja o primeiro!
-            </p>
-          ) : (
-            bets.map((bet) => {
-              const ticketCount = bet.ticket_end - bet.ticket_start + 1;
-              const winChance = totalTickets > 0 ? ((ticketCount / totalTickets) * 100).toFixed(2) : '0.00';
-              
-              return (
-                <div
-                  key={bet.id}
-                  className="bg-background/50 border border-border rounded-lg p-3 flex items-center justify-between hover:border-primary/50 transition-colors"
-                >
-                  <div>
-                    <p className="font-mono text-sm">
-                      {bet.wallet_address.slice(0, 8)}...{bet.wallet_address.slice(-4)}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {ticketCount} tickets
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-primary">{bet.amount.toFixed(4)} SOL</p>
-                    <p className="text-xs text-secondary">{winChance}%</p>
-                  </div>
+        <Card className="bg-card border-border p-4 text-center">
+          <p className="text-2xl md:text-3xl font-bold text-foreground">
+            ◎ {myBet?.amount.toFixed(3) || '0.000'}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">Sua Aposta</p>
+        </Card>
+
+        <Card className="bg-card border-border p-4 text-center">
+          <p className="text-2xl md:text-3xl font-bold text-foreground">
+            {myChance}%
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">Sua Chance</p>
+        </Card>
+
+        <Card className="bg-card border-border p-4 text-center">
+          <p className="text-2xl md:text-3xl font-bold text-secondary">
+            {formatTime(timeLeft)}
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">Tempo restante</p>
+        </Card>
+      </div>
+
+      {/* Arrow indicator */}
+      <div className="flex justify-center">
+        <ChevronDown className="w-8 h-8 text-secondary animate-bounce" />
+      </div>
+
+      {/* Participants Carousel */}
+      <div className="flex items-center gap-3 overflow-x-auto pb-4">
+        {bets.length === 0 ? (
+          <div className="flex-1 text-center py-8">
+            <p className="text-muted-foreground">Nenhuma aposta ainda. Seja o primeiro!</p>
+          </div>
+        ) : (
+          bets.map((bet) => {
+            const userInfo = userInfoMap[bet.wallet_address];
+            const ticketCount = bet.ticket_end - bet.ticket_start + 1;
+            const displayName = userInfo?.display_name || `${bet.wallet_address.slice(0, 8)}...`;
+            
+            return (
+              <Card
+                key={bet.id}
+                className="flex-shrink-0 bg-card border-border p-3 w-28 text-center hover:border-primary/50 transition-colors"
+              >
+                <div className="flex justify-center mb-2">
+                  <AuraAvatar
+                    level={userInfo?.level || 0}
+                    transformation={userInfo?.transformation}
+                    size="md"
+                  />
                 </div>
-              );
-            })
-          )}
+                <p className="text-xs text-foreground font-semibold truncate">{displayName}</p>
+                <p className="text-xs text-muted-foreground">◎ {bet.amount.toFixed(3)}</p>
+              </Card>
+            );
+          })
+        )}
+      </div>
+
+      {/* Last Winners */}
+      {lastWinner && (
+        <div className="grid md:grid-cols-2 gap-4">
+          <Card className="bg-card border-border p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs text-muted-foreground">REDONDO</span>
+              <span className="text-xs text-muted-foreground">#{lastWinner.round_number}</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <AuraAvatar
+                level={10}
+                transformation="SSJ1"
+                size="lg"
+              />
+              <p className="text-sm font-bold text-foreground mt-2">
+                {lastWinner.winner_wallet?.slice(0, 8)}...
+              </p>
+              <Badge className="bg-secondary/20 text-secondary border-0 mt-1">
+                ÚLTIMO VENCEDOR
+              </Badge>
+              <div className="flex justify-between w-full mt-3 text-xs">
+                <span className="text-muted-foreground">Ganhou</span>
+                <span className="text-primary font-bold">◎ {lastWinner.total_pot?.toFixed(3)}</span>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="bg-card border-border p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs text-muted-foreground">REDONDO</span>
+              <span className="text-xs text-muted-foreground">#{(lastWinner.round_number || 0) - 1}</span>
+            </div>
+            <div className="flex flex-col items-center">
+              <AuraAvatar
+                level={5}
+                transformation="Base Form"
+                size="lg"
+              />
+              <p className="text-sm font-bold text-foreground mt-2">Sorte do Dia</p>
+              <Badge className="bg-secondary/20 text-secondary border-0 mt-1">
+                SORTE DO DIA
+              </Badge>
+              <div className="flex justify-between w-full mt-3 text-xs">
+                <span className="text-muted-foreground">Chance</span>
+                <span className="text-green-500 font-bold">1.72%</span>
+              </div>
+            </div>
+          </Card>
         </div>
-      </Card>
+      )}
     </div>
   );
 };

@@ -28,6 +28,7 @@ export const useJackpot = () => {
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState(60);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [lastWinner, setLastWinner] = useState<JackpotRound | null>(null);
 
   // Fetch active round
   const fetchRound = async () => {
@@ -51,7 +52,22 @@ export const useJackpot = () => {
         const elapsed = Math.floor((now - startTime) / 1000);
         const remaining = Math.max(0, 60 - elapsed);
         setTimeLeft(remaining);
-      } else {
+      }
+      
+      // Fetch last winner
+      const { data: winnerData } = await supabase
+        .from('jackpot_rounds')
+        .select('*')
+        .eq('status', 'completed')
+        .order('completed_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (winnerData) {
+        setLastWinner(winnerData as JackpotRound);
+      }
+      
+      if (!data) {
         // Create new round if none exists
         await createNewRound();
       }
@@ -256,6 +272,7 @@ export const useJackpot = () => {
     timeLeft,
     isDrawing,
     placeBet,
-    drawWinner
+    drawWinner,
+    lastWinner
   };
 };

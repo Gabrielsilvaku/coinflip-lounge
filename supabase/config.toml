@@ -2,3 +2,6 @@ project_id = "hqkzkqosozgyruafnxth"
 
 [functions.wallet-balance]
 verify_jwt = false
+
+[functions.jackpot-admin]
+verify_jwt = false
