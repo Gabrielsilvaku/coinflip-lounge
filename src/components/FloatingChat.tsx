@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Minimize2, User } from 'lucide-react';
+import { MessageCircle, X, Send, Minimize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useChat } from '@/hooks/useChat';
 import { useChatUserInfo } from '@/hooks/useChatUserInfo';
+import { AuraAvatar } from '@/components/AuraAvatar';
 import { supabase } from '@/integrations/supabase/client';
 
 interface FloatingChatProps {
@@ -27,6 +28,24 @@ export const FloatingChat = ({ walletAddress }: FloatingChatProps) => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Check mute status
+  useEffect(() => {
+    if (!walletAddress) return;
+    
+    const checkMute = async () => {
+      const { data } = await supabase
+        .from('muted_users')
+        .select('*')
+        .eq('wallet_address', walletAddress)
+        .gt('muted_until', new Date().toISOString())
+        .maybeSingle();
+      
+      setIsMuted(!!data);
+    };
+    
+    checkMute();
+  }, [walletAddress]);
+
   const handleSend = () => {
     if (!walletAddress || !message.trim() || isMuted) return;
 
@@ -42,7 +61,7 @@ export const FloatingChat = ({ walletAddress }: FloatingChatProps) => {
 
   return (
     <>
-      {/* Chat Button - Positioned above music player */}
+      {/* Chat Button */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
@@ -90,7 +109,7 @@ export const FloatingChat = ({ walletAddress }: FloatingChatProps) => {
           {!isMinimized && (
             <>
               {/* Messages */}
-              <div className="h-96 overflow-y-auto p-3 space-y-2 bg-background/95">
+              <div className="h-96 overflow-y-auto p-3 space-y-3 bg-background/95">
                 {messages.length === 0 ? (
                   <p className="text-muted-foreground text-sm text-center mt-8">
                     Nenhuma mensagem ainda. Seja o primeiro!
@@ -106,54 +125,58 @@ export const FloatingChat = ({ walletAddress }: FloatingChatProps) => {
                     return (
                       <div
                         key={msg.id}
-                        className={`p-2 rounded-lg relative overflow-hidden ${
-                          msg.wallet_address === walletAddress
-                            ? 'bg-primary/20 ml-8'
-                            : isOwner
-                            ? 'bg-gradient-to-r from-purple-500/20 to-pink-600/20 border border-purple-500/50'
-                            : 'bg-muted mr-8'
+                        className={`flex gap-2 ${
+                          msg.wallet_address === walletAddress ? 'flex-row-reverse' : ''
                         }`}
                       >
-                        {/* Aura effect */}
-                        {userInfo && userInfo.level > 0 && (
-                          <div className={`absolute inset-0 bg-gradient-to-r ${userInfo.aura_color} opacity-10 animate-pulse`} />
-                        )}
-                        
-                        <div className="relative z-10">
-                          <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <div className="flex items-center gap-1">
-                              <User className="w-3 h-3 text-primary" />
+                        {/* Avatar with Aura */}
+                        <AuraAvatar
+                          level={userInfo?.level || 0}
+                          transformation={userInfo?.transformation}
+                          size="sm"
+                        />
+
+                        {/* Message Bubble */}
+                        <div
+                          className={`flex-1 p-2 rounded-lg relative overflow-hidden max-w-[200px] ${
+                            msg.wallet_address === walletAddress
+                              ? 'bg-primary/20 ml-auto'
+                              : isOwner
+                              ? 'bg-gradient-to-r from-purple-500/20 to-pink-600/20 border border-purple-500/50'
+                              : 'bg-muted'
+                          }`}
+                        >
+                          {/* Aura effect behind message */}
+                          {userInfo && userInfo.level > 0 && (
+                            <div className={`absolute inset-0 bg-gradient-to-r ${userInfo.aura_color} opacity-5 animate-pulse`} />
+                          )}
+                          
+                          <div className="relative z-10">
+                            <div className="flex items-center gap-1 mb-1 flex-wrap">
                               <span className={`text-xs font-bold bg-gradient-to-r ${userInfo?.aura_color || 'from-primary to-primary'} bg-clip-text text-transparent`}>
                                 {displayName}
                               </span>
+                              
+                              {userInfo && userInfo.level > 0 && (
+                                <Badge className={`bg-gradient-to-r ${userInfo.aura_color} text-white text-[10px] px-1 py-0 font-bold border-0`}>
+                                  {userInfo.level}
+                                </Badge>
+                              )}
+                              
+                              {isOwner && (
+                                <Badge className="bg-gradient-to-r from-primary to-secondary text-primary-foreground text-[10px] px-1 py-0 font-bold">
+                                  Ⓜ
+                                </Badge>
+                              )}
                             </div>
-                            
-                            {userInfo && userInfo.level > 0 && (
-                              <Badge className={`bg-gradient-to-r ${userInfo.aura_color} text-white text-xs px-1.5 py-0 font-bold border-0`}>
-                                Lv.{userInfo.level}
-                              </Badge>
-                            )}
-                            
-                            {userInfo?.transformation && (
-                              <Badge className={`bg-gradient-to-r ${userInfo.aura_color} text-white text-xs px-1.5 py-0 font-bold border-0`}>
-                                {userInfo.transformation}
-                              </Badge>
-                            )}
-                            
-                            {isOwner && (
-                              <Badge className="bg-gradient-to-r from-primary to-secondary text-primary-foreground text-xs px-1.5 py-0 font-bold">
-                                Ⓜ MAJIN
-                              </Badge>
-                            )}
-                            
-                            <span className="text-xs text-muted-foreground">
+                            <p className="text-sm text-foreground break-words">{msg.message}</p>
+                            <span className="text-[10px] text-muted-foreground">
                               {new Date(msg.created_at).toLocaleTimeString('pt-BR', {
                                 hour: '2-digit',
                                 minute: '2-digit'
                               })}
                             </span>
                           </div>
-                          <p className="text-sm text-foreground break-words">{msg.message}</p>
                         </div>
                       </div>
                     );

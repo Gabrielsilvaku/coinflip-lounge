@@ -3,10 +3,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { User, Edit2, Save, X, Trophy, TrendingUp, TrendingDown, Coins } from "lucide-react";
+import { Edit2, Save, X, Trophy, TrendingUp, TrendingDown, Coins } from "lucide-react";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { useUserLevel } from "@/hooks/useUserLevel";
 import { useUserStats } from "@/hooks/useUserStats";
+import { AuraAvatar } from "@/components/AuraAvatar";
 
 interface ProfileMenuProps {
   walletAddress: string;
@@ -15,7 +16,7 @@ interface ProfileMenuProps {
 
 export const ProfileMenu = ({ walletAddress, onClose }: ProfileMenuProps) => {
   const { profile, updateProfile, getDisplayName } = useUserProfile(walletAddress);
-  const { userLevel } = useUserLevel(walletAddress);
+  const { userLevel, getTransformation } = useUserLevel(walletAddress);
   const { stats, loading: statsLoading } = useUserStats(walletAddress);
   const [isEditing, setIsEditing] = useState(false);
   const [newName, setNewName] = useState(profile?.display_name || '');
@@ -27,9 +28,17 @@ export const ProfileMenu = ({ walletAddress, onClose }: ProfileMenuProps) => {
     }
   };
 
+  const currentTransformation = getTransformation();
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm overflow-y-auto">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm overflow-y-auto"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
       <Card className="bg-card border-2 border-primary/50 p-6 max-w-2xl w-full mx-4 my-8 relative">
+        {/* Single X button to close */}
         <Button
           onClick={onClose}
           size="icon"
@@ -40,8 +49,14 @@ export const ProfileMenu = ({ walletAddress, onClose }: ProfileMenuProps) => {
         </Button>
 
         <div className="text-center mb-6">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-primary to-secondary mx-auto mb-4 flex items-center justify-center border-4 border-background shadow-lg">
-            <User className="w-12 h-12 text-primary-foreground" />
+          {/* Avatar with Aura */}
+          <div className="flex justify-center mb-4">
+            <AuraAvatar
+              avatarUrl={profile?.avatar_url}
+              level={userLevel.level}
+              transformation={userLevel.transformation}
+              size="lg"
+            />
           </div>
 
           {isEditing ? (
@@ -59,6 +74,13 @@ export const ProfileMenu = ({ walletAddress, onClose }: ProfileMenuProps) => {
                 className="bg-primary hover:bg-primary/90"
               >
                 <Save className="w-4 h-4" />
+              </Button>
+              <Button
+                onClick={() => setIsEditing(false)}
+                size="icon"
+                variant="ghost"
+              >
+                <X className="w-4 h-4" />
               </Button>
             </div>
           ) : (
@@ -88,11 +110,11 @@ export const ProfileMenu = ({ walletAddress, onClose }: ProfileMenuProps) => {
           <div className="bg-gradient-to-br from-primary/10 to-secondary/10 border border-primary/30 rounded-lg p-4">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-muted-foreground">Transformação DBZ</span>
-              <Badge className="bg-gradient-to-r from-primary to-secondary text-primary-foreground">
+              <Badge className={`bg-gradient-to-r ${currentTransformation?.color || 'from-primary to-secondary'} text-white border-0`}>
                 Nível {userLevel.level}
               </Badge>
             </div>
-            <div className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+            <div className={`text-2xl font-bold bg-gradient-to-r ${currentTransformation?.color || 'from-primary to-secondary'} bg-clip-text text-transparent`}>
               {userLevel.transformation || 'Base Form'}
             </div>
             <div className="mt-2 flex items-center justify-between text-xs">
@@ -178,13 +200,6 @@ export const ProfileMenu = ({ walletAddress, onClose }: ProfileMenuProps) => {
             </div>
           </div>
         </div>
-
-        <Button
-          onClick={onClose}
-          className="w-full mt-6 bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-primary-foreground"
-        >
-          Fechar Perfil
-        </Button>
       </Card>
     </div>
   );
