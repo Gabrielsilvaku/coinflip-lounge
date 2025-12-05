@@ -94,8 +94,8 @@ serve(async (req) => {
     }
 
     if (action === "place_bet") {
-      const roundId = body.roundId as string | undefined;
-      const walletAddress = body.walletAddress as string | undefined;
+      const roundId = (body.roundId || body.round_id) as string | undefined;
+      const walletAddress = (body.walletAddress || body.wallet_address) as string | undefined;
       const amount = body.amount as number | undefined;
 
       if (!roundId || !walletAddress || typeof amount !== "number" || amount <= 0) {
@@ -181,7 +181,7 @@ serve(async (req) => {
     }
 
     if (action === "draw_winner") {
-      const roundId = body.roundId as string | undefined;
+      const roundId = (body.roundId || body.round_id) as string | undefined;
 
       if (!roundId) {
         return new Response(JSON.stringify({ error: "Missing roundId" }), {
@@ -284,8 +284,10 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify({
+          winner: winner.wallet_address,
           winnerWallet: winner.wallet_address,
           winningTicket,
+          prize: round.total_pot ?? 0,
           totalPot: round.total_pot ?? 0,
         }),
         {

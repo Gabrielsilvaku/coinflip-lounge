@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -22,13 +22,17 @@ interface JackpotRound {
   completed_at: string | null;
 }
 
+const ROUND_DURATION = 60;
+
 export const useJackpot = () => {
   const [currentRound, setCurrentRound] = useState<JackpotRound | null>(null);
   const [bets, setBets] = useState<JackpotBet[]>([]);
   const [loading, setLoading] = useState(true);
-  const [timeLeft, setTimeLeft] = useState(60);
+  const [timeLeft, setTimeLeft] = useState(ROUND_DURATION);
   const [isDrawing, setIsDrawing] = useState(false);
   const [lastWinner, setLastWinner] = useState<JackpotRound | null>(null);
+  const drawingRef = useRef(false);
+  const lastRoundIdRef = useRef<string | null>(null);
 
   // Fetch active round
   const fetchRound = async () => {
@@ -39,19 +43,26 @@ export const useJackpot = () => {
         .eq('status', 'active')
         .order('started_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error) throw error;
       
       if (data) {
-        setCurrentRound(data as JackpotRound);
-        
-        // Calculate time left
+        // Check if round is expired (more than 60 seconds old)
         const startTime = new Date(data.started_at).getTime();
         const now = Date.now();
         const elapsed = Math.floor((now - startTime) / 1000);
-        const remaining = Math.max(0, 60 - elapsed);
-        setTimeLeft(remaining);
+        
+        if (elapsed > ROUND_DURATION) {
+          // Round is expired, create a new one
+          await forceNewRound();
+          return;
+        }
+        
+        setCurrentRound(data as JackpotRound);
+        setTimeLeft(Math.max(0, ROUND_DURATION - elapsed));
+      } else {
+        await forceNewRound();
       }
       
       // Fetch last winner
@@ -65,11 +76,6 @@ export const useJackpot = () => {
       
       if (winnerData) {
         setLastWinner(winnerData as JackpotRound);
-      }
-      
-      if (!data) {
-        // Create new round if none exists
-        await createNewRound();
       }
     } catch (error) {
       console.error('Error fetching round:', error);
@@ -87,7 +93,7 @@ export const useJackpot = () => {
         .from('jackpot_bets')
         .select('*')
         .eq('round_id', currentRound.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: true });
 
       if (error) throw error;
       setBets(data as JackpotBet[] || []);
@@ -96,118 +102,144 @@ export const useJackpot = () => {
     }
   };
 
-  // Create or ensure active round via backend function
-  const createNewRound = async () => {
+  // Force create a brand new round
+  const forceNewRound = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('jackpot-admin', {
-        body: { action: 'ensure_active_round' },
-      });
+      // First complete any stale active rounds
+      await supabase
+        .from('jackpot_rounds')
+        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .eq('status', 'active');
+
+      // Create new round
+      const { data: newRound, error } = await supabase
+        .from('jackpot_rounds')
+        .insert({
+          status: 'active',
+          total_pot: 0,
+          started_at: new Date().toISOString()
+        })
+        .select()
+        .single();
 
       if (error) throw error;
 
-      const round = (data as any)?.round as JackpotRound | null;
-
-      if (!round) {
-        console.error('No round returned from jackpot-admin function');
-        return;
+      if (newRound) {
+        setCurrentRound(newRound as JackpotRound);
+        setTimeLeft(ROUND_DURATION);
+        setBets([]);
+        lastRoundIdRef.current = newRound.id;
       }
-
-      setCurrentRound(round);
-
-      const startTime = new Date(round.started_at).getTime();
-      const now = Date.now();
-      const elapsed = Math.floor((now - startTime) / 1000);
-      const remaining = Math.max(0, 60 - elapsed);
-      setTimeLeft(remaining);
-      setBets([]);
     } catch (error) {
-      console.error('Error creating round:', error);
+      console.error('Error creating new round:', error);
     }
   };
 
-  // Draw winner using backend function (single real winner, no spam)
+  // Draw winner - only when there are bets
   const drawWinner = async () => {
-    if (!currentRound || isDrawing) return;
+    if (!currentRound || drawingRef.current || bets.length === 0) {
+      // No bets, just create new round silently
+      if (bets.length === 0) {
+        await forceNewRound();
+      }
+      return;
+    }
 
+    drawingRef.current = true;
     setIsDrawing(true);
 
     try {
       const { data, error } = await supabase.functions.invoke('jackpot-admin', {
-        body: { action: 'draw_winner', roundId: currentRound.id },
+        body: { action: 'draw_winner', round_id: currentRound.id },
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       const result = data as any;
 
-      if (result?.noBets) {
-        toast.info('Nenhuma aposta nesta rodada. Iniciando nova rodada...');
-      } else if (result?.alreadyCompleted) {
-        // Outro processo já completou a rodada, apenas sincroniza estado
-        console.log('Jackpot round already completed by another process');
-      } else if (result?.winnerWallet) {
-        const winnerWallet = result.winnerWallet as string;
-        const totalPot = Number(result.totalPot ?? currentRound.total_pot ?? 0);
-
+      if (result?.winner) {
         toast.success('🏆 Ganhador Sorteado!', {
-          description: `${winnerWallet.slice(0, 8)}...${winnerWallet.slice(-4)} ganhou ${totalPot.toFixed(4)} SOL!`,
+          description: `${result.winner.slice(0, 8)}... ganhou ${(result.prize || currentRound.total_pot).toFixed(4)} SOL!`,
           duration: 8000,
+        });
+        
+        setLastWinner({
+          ...currentRound,
+          winner_wallet: result.winner,
+          status: 'completed'
         });
       }
 
-      // Depois do sorteio, garante nova rodada ativa
-      setTimeout(() => {
-        createNewRound();
+      // Create new round after delay
+      setTimeout(async () => {
+        await forceNewRound();
+        drawingRef.current = false;
         setIsDrawing(false);
-      }, 5000);
+      }, 3000);
     } catch (error) {
       console.error('Error drawing winner:', error);
-      toast.error('Erro ao sortear vencedor');
+      drawingRef.current = false;
       setIsDrawing(false);
+      await forceNewRound();
     }
   };
 
-  // Timer effect - 60s countdown, chama drawWinner apenas uma vez por rodada
+  // Timer effect
   useEffect(() => {
     if (!currentRound || isDrawing) return;
 
-    if (timeLeft <= 0) {
-      drawWinner();
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      setTimeLeft((prev) => Math.max(0, prev - 1));
+    const timer = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          // Time's up
+          if (bets.length > 0 && !drawingRef.current) {
+            drawWinner();
+          } else if (!drawingRef.current) {
+            forceNewRound();
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
 
-    return () => clearTimeout(timer);
-  }, [currentRound, timeLeft, isDrawing]);
+    return () => clearInterval(timer);
+  }, [currentRound?.id, isDrawing, bets.length]);
 
   // Subscribe to real-time updates
   useEffect(() => {
     fetchRound();
 
     const roundChannel = supabase
-      .channel('jackpot-rounds')
+      .channel('jackpot-rounds-changes')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'jackpot_rounds'
-      }, () => {
-        fetchRound();
+      }, (payload) => {
+        if (payload.new && (payload.new as any).status === 'active') {
+          setCurrentRound(payload.new as JackpotRound);
+          const startTime = new Date((payload.new as any).started_at).getTime();
+          const elapsed = Math.floor((Date.now() - startTime) / 1000);
+          setTimeLeft(Math.max(0, ROUND_DURATION - elapsed));
+        }
       })
       .subscribe();
 
     const betsChannel = supabase
-      .channel('jackpot-bets')
+      .channel('jackpot-bets-changes')
       .on('postgres_changes', {
-        event: '*',
+        event: 'INSERT',
         schema: 'public',
         table: 'jackpot_bets'
-      }, () => {
-        fetchBets();
+      }, (payload) => {
+        if (currentRound && (payload.new as any).round_id === currentRound.id) {
+          setBets(prev => [...prev, payload.new as JackpotBet]);
+          setCurrentRound(prev => prev ? {
+            ...prev,
+            total_pot: (prev.total_pot || 0) + (payload.new as any).amount
+          } : null);
+        }
       })
       .subscribe();
 
@@ -221,12 +253,17 @@ export const useJackpot = () => {
     if (currentRound) {
       fetchBets();
     }
-  }, [currentRound]);
+  }, [currentRound?.id]);
 
-  // Place bet using backend function
+  // Place bet
   const placeBet = async (walletAddress: string, amount: number) => {
     if (!currentRound) {
       toast.error('Nenhuma rodada ativa');
+      return false;
+    }
+
+    if (timeLeft <= 0) {
+      toast.error('Rodada encerrada! Aguarde a próxima.');
       return false;
     }
 
@@ -234,29 +271,15 @@ export const useJackpot = () => {
       const { data, error } = await supabase.functions.invoke('jackpot-admin', {
         body: {
           action: 'place_bet',
-          roundId: currentRound.id,
-          walletAddress,
+          round_id: currentRound.id,
+          wallet_address: walletAddress,
           amount,
         },
       });
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
-      const result = data as any;
-      const ticketStart = result?.ticketStart as number | undefined;
-      const ticketEnd = result?.ticketEnd as number | undefined;
-      const ticketCount = result?.ticketCount as number | undefined;
-
-      if (ticketCount && ticketStart !== undefined && ticketEnd !== undefined) {
-        toast.success('Aposta realizada!', {
-          description: `Você recebeu ${ticketCount} tickets (#${ticketStart} - #${ticketEnd})`,
-        });
-      } else {
-        toast.success('Aposta realizada!');
-      }
-
+      toast.success(`Aposta de ${amount} SOL realizada!`);
       return true;
     } catch (error) {
       console.error('Error placing bet:', error);

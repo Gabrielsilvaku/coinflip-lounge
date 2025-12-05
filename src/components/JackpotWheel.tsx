@@ -2,13 +2,15 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trophy, Timer, Users, Coins, ChevronDown } from "lucide-react";
+import { ChevronDown, HelpCircle } from "lucide-react";
 import { useState } from "react";
 import { useJackpot } from "@/hooks/useJackpot";
 import { useWallet } from "@/contexts/WalletContext";
 import { useChatUserInfo } from "@/hooks/useChatUserInfo";
 import { AuraAvatar } from "@/components/AuraAvatar";
 import { toast } from "sonner";
+
+const PLACEHOLDER_SLOTS = 6;
 
 export const JackpotWheel = () => {
   const { currentRound, bets, loading, timeLeft, isDrawing, placeBet, lastWinner } = useJackpot();
@@ -53,6 +55,12 @@ export const JackpotWheel = () => {
   const myBet = bets.find(b => b.wallet_address === walletAddress);
   const myTickets = myBet ? myBet.ticket_end - myBet.ticket_start + 1 : 0;
   const myChance = totalTickets > 0 && myTickets > 0 ? ((myTickets / totalTickets) * 100).toFixed(2) : '0.00';
+
+  // Create slots array with bets and empty placeholders
+  const slots = [...bets];
+  while (slots.length < PLACEHOLDER_SLOTS) {
+    slots.push(null as any);
+  }
 
   return (
     <div className="space-y-6">
@@ -100,14 +108,14 @@ export const JackpotWheel = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-br from-primary/20 to-primary/5 border-primary/50 p-4 text-center">
           <p className="text-2xl md:text-3xl font-bold text-primary">
-            ◎ {currentRound?.total_pot.toFixed(3) || '0.000'}
+            ◎ {currentRound?.total_pot?.toFixed(3) || '0.000'}
           </p>
           <p className="text-xs text-muted-foreground mt-1">Valor do Jackpot</p>
         </Card>
 
         <Card className="bg-card border-border p-4 text-center">
           <p className="text-2xl md:text-3xl font-bold text-foreground">
-            ◎ {myBet?.amount.toFixed(3) || '0.000'}
+            ◎ {myBet?.amount?.toFixed(3) || '0.000'}
           </p>
           <p className="text-xs text-muted-foreground mt-1">Sua Aposta</p>
         </Card>
@@ -132,22 +140,17 @@ export const JackpotWheel = () => {
         <ChevronDown className="w-8 h-8 text-secondary animate-bounce" />
       </div>
 
-      {/* Participants Carousel */}
+      {/* Participants Carousel with Placeholder Slots */}
       <div className="flex items-center gap-3 overflow-x-auto pb-4">
-        {bets.length === 0 ? (
-          <div className="flex-1 text-center py-8">
-            <p className="text-muted-foreground">Nenhuma aposta ainda. Seja o primeiro!</p>
-          </div>
-        ) : (
-          bets.map((bet) => {
+        {slots.map((bet, index) => {
+          if (bet) {
             const userInfo = userInfoMap[bet.wallet_address];
-            const ticketCount = bet.ticket_end - bet.ticket_start + 1;
             const displayName = userInfo?.display_name || `${bet.wallet_address.slice(0, 8)}...`;
             
             return (
               <Card
                 key={bet.id}
-                className="flex-shrink-0 bg-card border-border p-3 w-28 text-center hover:border-primary/50 transition-colors"
+                className="flex-shrink-0 bg-card border-primary/50 p-3 w-28 text-center hover:border-primary transition-colors"
               >
                 <div className="flex justify-center mb-2">
                   <AuraAvatar
@@ -157,11 +160,27 @@ export const JackpotWheel = () => {
                   />
                 </div>
                 <p className="text-xs text-foreground font-semibold truncate">{displayName}</p>
-                <p className="text-xs text-muted-foreground">◎ {bet.amount.toFixed(3)}</p>
+                <p className="text-xs text-primary font-bold">◎ {bet.amount.toFixed(3)}</p>
               </Card>
             );
-          })
-        )}
+          }
+          
+          // Empty placeholder slot with "?"
+          return (
+            <Card
+              key={`placeholder-${index}`}
+              className="flex-shrink-0 bg-card/50 border-border border-dashed p-3 w-28 text-center opacity-50"
+            >
+              <div className="flex justify-center mb-2">
+                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                  <HelpCircle className="w-6 h-6 text-muted-foreground" />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground font-semibold">Espera</p>
+              <p className="text-xs text-muted-foreground">◎ 0.000</p>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Last Winners */}
@@ -193,22 +212,16 @@ export const JackpotWheel = () => {
 
           <Card className="bg-card border-border p-4">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs text-muted-foreground">REDONDO</span>
-              <span className="text-xs text-muted-foreground">#{(lastWinner.round_number || 0) - 1}</span>
+              <span className="text-xs text-muted-foreground">INFO</span>
             </div>
-            <div className="flex flex-col items-center">
-              <AuraAvatar
-                level={5}
-                transformation="Base Form"
-                size="lg"
-              />
-              <p className="text-sm font-bold text-foreground mt-2">Sorte do Dia</p>
-              <Badge className="bg-secondary/20 text-secondary border-0 mt-1">
-                SORTE DO DIA
-              </Badge>
-              <div className="flex justify-between w-full mt-3 text-xs">
-                <span className="text-muted-foreground">Chance</span>
-                <span className="text-green-500 font-bold">1.72%</span>
+            <div className="flex flex-col items-center justify-center h-full">
+              <p className="text-sm text-muted-foreground text-center">
+                Aposte SOL para participar. Quanto mais você aposta, maior sua chance de ganhar o pot inteiro!
+              </p>
+              <div className="mt-4 text-xs text-muted-foreground">
+                <p>• Mínimo: 0.001 SOL</p>
+                <p>• Rodadas de 60 segundos</p>
+                <p>• 1 vencedor leva tudo</p>
               </div>
             </div>
           </Card>
