@@ -2,7 +2,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ChevronDown, HelpCircle, Trophy, Zap } from "lucide-react";
+import { ChevronDown, HelpCircle, Trophy, Zap, Target } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useJackpot } from "@/hooks/useJackpot";
 import { useWallet } from "@/contexts/WalletContext";
@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import solIcon from "@/assets/sol-icon.png";
 
 const TOTAL_SLOTS = 12;
+const SLOT_WIDTH = 108; // Width of each slot including gap
 
 export const JackpotWheel = () => {
   const { currentRound, bets, loading, timeLeft, isDrawing, placeBet, lastWinner } = useJackpot();
@@ -19,9 +20,10 @@ export const JackpotWheel = () => {
   const [betAmount, setBetAmount] = useState('0.1');
   const carouselRef = useRef<HTMLDivElement>(null);
   const [spinOffset, setSpinOffset] = useState(0);
-  const [isSpinning, setIsSpinning] = useState(false);
-  const [spinSpeed, setSpinSpeed] = useState(0);
   const animationRef = useRef<number>();
+  const lastTimeRef = useRef<number>(0);
+  const currentSpeedRef = useRef<number>(0);
+  const targetSpeedRef = useRef<number>(0);
 
   const walletAddresses = bets.map(b => b.wallet_address);
   if (lastWinner?.winner_wallet && !walletAddresses.includes(lastWinner.winner_wallet)) {
@@ -29,36 +31,41 @@ export const JackpotWheel = () => {
   }
   const userInfoMap = useChatUserInfo(walletAddresses);
 
-  // Carousel spinning animation
+  // Determine target speed based on game state
   useEffect(() => {
     if (bets.length === 0) {
-      setSpinSpeed(0);
-      return;
-    }
-
-    // Slow spin during countdown
-    if (timeLeft > 5 && !isDrawing) {
-      setSpinSpeed(1); // Slow
-      setIsSpinning(true);
-    } 
-    // Fast spin when timer ending or drawing
-    else if ((timeLeft <= 5 && timeLeft > 0) || isDrawing) {
-      setSpinSpeed(5); // Fast
-      setIsSpinning(true);
-    }
-    // Stop when done
-    else if (timeLeft === 0 && !isDrawing) {
-      setSpinSpeed(0);
-      setIsSpinning(false);
+      targetSpeedRef.current = 0.5; // Very slow idle spin even with no bets
+    } else if (isDrawing) {
+      targetSpeedRef.current = 15; // Very fast during drawing
+    } else if (timeLeft <= 3 && timeLeft > 0) {
+      targetSpeedRef.current = 12; // Fast when timer almost done
+    } else if (timeLeft > 0) {
+      targetSpeedRef.current = 1.5; // Slow spin during countdown
+    } else {
+      targetSpeedRef.current = 0; // Stop
     }
   }, [timeLeft, isDrawing, bets.length]);
 
-  // Animation loop
+  // Smooth animation loop with acceleration/deceleration
   useEffect(() => {
-    const animate = () => {
-      if (spinSpeed > 0) {
-        setSpinOffset(prev => (prev + spinSpeed) % 1000);
+    const animate = (timestamp: number) => {
+      if (!lastTimeRef.current) lastTimeRef.current = timestamp;
+      const delta = timestamp - lastTimeRef.current;
+      lastTimeRef.current = timestamp;
+
+      // Smoothly interpolate speed
+      const speedDiff = targetSpeedRef.current - currentSpeedRef.current;
+      const acceleration = isDrawing ? 0.15 : 0.05; // Faster acceleration when drawing
+      currentSpeedRef.current += speedDiff * acceleration;
+
+      // Apply movement
+      if (Math.abs(currentSpeedRef.current) > 0.01) {
+        setSpinOffset(prev => {
+          const maxOffset = SLOT_WIDTH * TOTAL_SLOTS;
+          return (prev + currentSpeedRef.current * (delta / 16)) % maxOffset;
+        });
       }
+
       animationRef.current = requestAnimationFrame(animate);
     };
     
@@ -68,17 +75,17 @@ export const JackpotWheel = () => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [spinSpeed]);
+  }, [isDrawing]);
 
   const handlePlaceBet = async () => {
     if (!walletAddress) {
-      toast.error('Conecte sua carteira primeiro!');
+      toast.error('Connect your wallet first!');
       return;
     }
 
     const amount = parseFloat(betAmount);
     if (isNaN(amount) || amount < 0.001) {
-      toast.error('Valor mínimo de aposta é 0.001 SOL');
+      toast.error('Minimum bet is 0.001 SOL');
       return;
     }
 
@@ -96,7 +103,7 @@ export const JackpotWheel = () => {
   if (loading) {
     return (
       <Card className="bg-card border-2 border-primary p-8">
-        <p className="text-center text-muted-foreground">Carregando jackpot...</p>
+        <p className="text-center text-muted-foreground">Loading jackpot...</p>
       </Card>
     );
   }
@@ -109,14 +116,14 @@ export const JackpotWheel = () => {
   // Create infinite slots array for carousel effect
   const createCarouselSlots = () => {
     const slots = [];
+    const slotsNeeded = TOTAL_SLOTS * 4;
+    
     if (bets.length > 0) {
-      // Repeat bets to fill carousel
-      for (let i = 0; i < TOTAL_SLOTS * 3; i++) {
+      for (let i = 0; i < slotsNeeded; i++) {
         slots.push(bets[i % bets.length]);
       }
     } else {
-      // Show placeholder slots
-      for (let i = 0; i < TOTAL_SLOTS; i++) {
+      for (let i = 0; i < slotsNeeded; i++) {
         slots.push(null);
       }
     }
@@ -134,11 +141,10 @@ export const JackpotWheel = () => {
       {/* Header with Logo and Bet Input */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="text-4xl font-bold text-primary flex items-center gap-2">
-            <img src={solIcon} alt="SOL" className="w-10 h-10" />
-            BOLADA
+          <div className="text-3xl font-bold text-primary flex items-center gap-2">
+            <Target className="w-8 h-8" />
+            Jackpot
           </div>
-          <p className="text-sm text-muted-foreground">O vencedor leva tudo...</p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -167,7 +173,7 @@ export const JackpotWheel = () => {
             className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-6"
           >
             <Zap className="w-4 h-4 mr-2" />
-            Apostar
+            Bet
           </Button>
         </div>
       </div>
@@ -179,7 +185,7 @@ export const JackpotWheel = () => {
             <img src={solIcon} alt="SOL" className="w-6 h-6" />
             {currentRound?.total_pot?.toFixed(3) || '0.000'}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">Valor do Jackpot</p>
+          <p className="text-xs text-muted-foreground mt-1">Jackpot Prize</p>
         </Card>
 
         <Card className="bg-card border-border p-4 text-center">
@@ -187,27 +193,27 @@ export const JackpotWheel = () => {
             <img src={solIcon} alt="SOL" className="w-6 h-6" />
             {myBet?.amount?.toFixed(3) || '0.000'}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">Sua Aposta</p>
+          <p className="text-xs text-muted-foreground mt-1">Your Bet</p>
         </Card>
 
         <Card className="bg-card border-border p-4 text-center">
           <p className="text-2xl md:text-3xl font-bold text-foreground">
             {myChance}%
           </p>
-          <p className="text-xs text-muted-foreground mt-1">Sua Chance</p>
+          <p className="text-xs text-muted-foreground mt-1">Win Chance</p>
         </Card>
 
         <Card className={`border-border p-4 text-center ${timeLeft <= 10 ? 'bg-destructive/20 border-destructive' : 'bg-card'}`}>
           <p className={`text-2xl md:text-3xl font-bold ${timeLeft <= 10 ? 'text-destructive animate-pulse' : 'text-secondary'}`}>
             {formatTime(timeLeft)}
           </p>
-          <p className="text-xs text-muted-foreground mt-1">Tempo restante</p>
+          <p className="text-xs text-muted-foreground mt-1">Time Left</p>
         </Card>
       </div>
 
       {/* Arrow indicator */}
       <div className="flex justify-center">
-        <ChevronDown className={`w-8 h-8 text-secondary ${isSpinning ? 'animate-bounce' : ''}`} />
+        <ChevronDown className={`w-8 h-8 text-secondary ${currentSpeedRef.current > 2 ? 'animate-bounce' : ''}`} />
       </div>
 
       {/* Spinning Carousel */}
@@ -219,10 +225,9 @@ export const JackpotWheel = () => {
 
         <div 
           ref={carouselRef}
-          className="flex items-center gap-3 transition-transform"
+          className="flex items-center gap-3"
           style={{ 
             transform: `translateX(-${spinOffset}px)`,
-            transition: spinSpeed > 0 ? 'none' : 'transform 0.5s ease-out'
           }}
         >
           {carouselSlots.map((bet, index) => {
@@ -278,7 +283,7 @@ export const JackpotWheel = () => {
         {/* Last Winner */}
         <Card className="bg-gradient-to-br from-card to-secondary/5 border-secondary/50 p-4">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs text-muted-foreground uppercase tracking-wider">Rodada</span>
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">Round</span>
             <span className="text-xs text-secondary font-mono">#{lastWinner?.round_number || '---'}</span>
           </div>
           
@@ -302,11 +307,11 @@ export const JackpotWheel = () => {
               )}
               <Badge className="bg-secondary/20 text-secondary border-0 mt-2">
                 <Trophy className="w-3 h-3 mr-1" />
-                ÚLTIMO VENCEDOR
+                LAST WINNER
               </Badge>
               <div className="flex flex-col gap-2 w-full mt-4 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">Ganhou</span>
+                  <span className="text-muted-foreground">Won</span>
                   <div className="flex items-center gap-1">
                     <img src={solIcon} alt="SOL" className="w-4 h-4" />
                     <span className="text-primary font-bold">{lastWinner.total_pot?.toFixed(3) || '0.000'}</span>
@@ -319,7 +324,7 @@ export const JackpotWheel = () => {
               <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-2">
                 <HelpCircle className="w-12 h-12 text-muted-foreground" />
               </div>
-              <p className="text-sm text-muted-foreground">Nenhum vencedor ainda</p>
+              <p className="text-sm text-muted-foreground">No winner yet</p>
               <div className="flex items-center gap-1 mt-2">
                 <img src={solIcon} alt="SOL" className="w-4 h-4 opacity-50" />
                 <span className="text-muted-foreground">0.000</span>
@@ -331,18 +336,18 @@ export const JackpotWheel = () => {
         {/* Current Round Stats */}
         <Card className="bg-card border-border p-4">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs text-muted-foreground uppercase tracking-wider">Rodada Atual</span>
+            <span className="text-xs text-muted-foreground uppercase tracking-wider">Current Round</span>
             <span className="text-xs text-primary font-mono">#{currentRound?.round_number || '---'}</span>
           </div>
           
           <div className="space-y-3">
             <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-              <span className="text-sm text-muted-foreground">Participantes</span>
+              <span className="text-sm text-muted-foreground">Players</span>
               <span className="text-lg font-bold text-foreground">{bets.length}</span>
             </div>
             
             <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-              <span className="text-sm text-muted-foreground">Pot Total</span>
+              <span className="text-sm text-muted-foreground">Total Pot</span>
               <div className="flex items-center gap-2">
                 <img src={solIcon} alt="SOL" className="w-5 h-5" />
                 <span className="text-lg font-bold text-primary">{currentRound?.total_pot?.toFixed(3) || '0.000'}</span>
@@ -350,7 +355,7 @@ export const JackpotWheel = () => {
             </div>
             
             <div className="flex justify-between items-center p-3 bg-muted/30 rounded-lg">
-              <span className="text-sm text-muted-foreground">Sua Aposta</span>
+              <span className="text-sm text-muted-foreground">Your Bet</span>
               <div className="flex items-center gap-2">
                 <img src={solIcon} alt="SOL" className="w-5 h-5" />
                 <span className="text-lg font-bold text-foreground">{myBet?.amount?.toFixed(3) || '0.000'}</span>
@@ -358,7 +363,7 @@ export const JackpotWheel = () => {
             </div>
             
             <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg border border-primary/30">
-              <span className="text-sm text-muted-foreground">Sua Chance</span>
+              <span className="text-sm text-muted-foreground">Win Chance</span>
               <span className="text-lg font-bold text-primary">{myChance}%</span>
             </div>
           </div>
