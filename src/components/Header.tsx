@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Bell, User, Shield, LogOut, Wallet } from "lucide-react";
+import { User, Shield, Wallet, Gift } from "lucide-react";
 import { useState, useEffect } from "react";
 import { WalletModal } from "./WalletModal";
 import { ProfileMenu } from "./ProfileMenu";
@@ -10,6 +10,8 @@ import { useWallet } from "@/contexts/WalletContext";
 import { LevelDisplay } from "./LevelDisplay";
 import { useUserProfile } from "@/hooks/useUserProfile";
 import { OWNER_WALLET } from "@/lib/config";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ReferralPanel } from "./ReferralPanel";
 
 export const Header = () => {
   const [isWalletModalOpen, setIsWalletModalOpen] = useState(false);
@@ -79,6 +81,31 @@ export const Header = () => {
                 Bolada
               </Button>
             </Link>
+            <Button
+              variant="ghost"
+              className="text-foreground hover:text-secondary hover:bg-transparent transition-colors relative group"
+              disabled
+            >
+              Mugen Future
+              <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-card border border-secondary px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                Em Breve
+              </span>
+            </Button>
+            {/* Afiliados next to Mugen Future */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="ghost"
+                  className="text-secondary hover:text-secondary/80 hover:bg-transparent transition-colors"
+                >
+                  <Gift className="w-4 h-4 mr-2" />
+                  Afiliados
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 bg-card border-border" align="end">
+                <ReferralPanel walletAddress={walletAddress} />
+              </PopoverContent>
+            </Popover>
             {walletAddress === OWNER_WALLET && (
               <Link to="/admin">
                 <Button
@@ -90,16 +117,6 @@ export const Header = () => {
                 </Button>
               </Link>
             )}
-            <Button
-              variant="ghost"
-              className="text-foreground hover:text-secondary hover:bg-transparent transition-colors relative group"
-              disabled
-            >
-              Mugen Future
-              <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-card border border-secondary px-2 py-1 rounded text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                Em Breve
-              </span>
-            </Button>
           </nav>
 
           <div className="flex items-center gap-3">
