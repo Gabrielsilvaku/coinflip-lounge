@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { OWNER_WALLET } from '@/lib/config';
+
+// Owner wallet is verified server-side, this is just for UI display purposes
+const OWNER_WALLET = '4uNhT1fDwJg62gYbT7sSfJ4Qmwp7XAGSVCoEMUUoHktU';
 
 export const useAdmin = (walletAddress: string | null) => {
   const [isAdmin, setIsAdmin] = useState(false);
@@ -18,153 +20,139 @@ export const useAdmin = (walletAddress: string | null) => {
       return;
     }
 
-    if (walletAddress === OWNER_WALLET) {
-      setIsAdmin(true);
+    try {
+      // Verify admin status via backend
+      const { data, error } = await supabase.functions.invoke('admin-verify', {
+        body: {
+          action: 'check_admin',
+          walletAddress,
+        },
+      });
+
+      if (error) {
+        console.error('Error checking admin status:', error);
+        setIsAdmin(false);
+      } else {
+        setIsAdmin(data?.isAdmin === true);
+      }
+    } catch (error) {
+      console.error('Error checking admin status:', error);
+      setIsAdmin(false);
+    } finally {
       setLoading(false);
-      return;
+    }
+  };
+
+  // Helper to get signature from wallet (requires wallet adapter integration)
+  const getSignature = useCallback(async (message: string): Promise<string | null> => {
+    try {
+      // This would need to be integrated with the wallet adapter
+      // For now, we'll show an error indicating signature is needed
+      console.log('Signature required for message:', message);
+      toast.error('Wallet signature required for this action');
+      return null;
+    } catch (error) {
+      console.error('Error getting signature:', error);
+      return null;
+    }
+  }, []);
+
+  const callAdminAction = async (
+    action: string,
+    params: Record<string, any>
+  ): Promise<boolean> => {
+    if (!isAdmin || !walletAddress) {
+      toast.error('Unauthorized');
+      return false;
     }
 
-    setIsAdmin(false);
-    setLoading(false);
+    const timestamp = new Date().toISOString();
+    const message = `Admin action: ${action} at ${timestamp}`;
+    
+    // For now, we'll call the backend which will verify the owner wallet
+    // In production, you'd integrate with wallet adapter to sign messages
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-verify', {
+        body: {
+          action,
+          walletAddress,
+          timestamp,
+          // signature would come from wallet adapter
+          ...params,
+        },
+      });
+
+      if (error) {
+        console.error(`Error executing ${action}:`, error);
+        toast.error(`Failed to execute action: ${error.message}`);
+        return false;
+      }
+
+      if (data?.success) {
+        return true;
+      } else if (data?.error) {
+        toast.error(data.error);
+        return false;
+      }
+
+      return false;
+    } catch (error) {
+      console.error(`Error executing ${action}:`, error);
+      toast.error('Failed to execute admin action');
+      return false;
+    }
   };
 
   const banUser = async (targetWallet: string, reason: string, ipAddress?: string) => {
-    if (!isAdmin) return;
-
-    try {
-      const { error } = await supabase
-        .from('banned_users')
-        .insert({
-          wallet_address: targetWallet,
-          ip_address: ipAddress,
-          reason
-        });
-
-      if (error) throw error;
-
-      await logAction('ban_user', targetWallet, { reason, ipAddress });
+    const success = await callAdminAction('ban_user', {
+      targetWallet,
+      reason,
+      ipAddress,
+    });
+    if (success) {
       toast.success('Usuário banido com sucesso');
-    } catch (error) {
-      console.error('Error banning user:', error);
-      toast.error('Erro ao banir usuário');
     }
   };
 
   const unbanUser = async (targetWallet: string) => {
-    if (!isAdmin) return;
-
-    try {
-      const { error } = await supabase
-        .from('banned_users')
-        .delete()
-        .eq('wallet_address', targetWallet);
-
-      if (error) throw error;
-
-      await logAction('unban_user', targetWallet, {});
+    const success = await callAdminAction('unban_user', { targetWallet });
+    if (success) {
       toast.success('Usuário desbanido com sucesso');
-    } catch (error) {
-      console.error('Error unbanning user:', error);
-      toast.error('Erro ao desbanir usuário');
     }
   };
 
   const muteUser = async (targetWallet: string, reason: string, durationMinutes: number) => {
-    if (!isAdmin) return;
-
-    try {
-      const mutedUntil = new Date();
-      mutedUntil.setMinutes(mutedUntil.getMinutes() + durationMinutes);
-
-      const { error } = await supabase
-        .from('muted_users')
-        .insert({
-          wallet_address: targetWallet,
-          reason,
-          muted_until: mutedUntil.toISOString()
-        });
-
-      if (error) throw error;
-
-      await logAction('mute_user', targetWallet, { reason, durationMinutes });
+    const success = await callAdminAction('mute_user', {
+      targetWallet,
+      reason,
+      durationMinutes,
+    });
+    if (success) {
       toast.success(`Usuário silenciado por ${durationMinutes} minutos`);
-    } catch (error) {
-      console.error('Error muting user:', error);
-      toast.error('Erro ao silenciar usuário');
     }
   };
 
   const unmuteUser = async (targetWallet: string) => {
-    if (!isAdmin) return;
-
-    try {
-      const { error } = await supabase
-        .from('muted_users')
-        .delete()
-        .eq('wallet_address', targetWallet);
-
-      if (error) throw error;
-
-      await logAction('unmute_user', targetWallet, {});
+    const success = await callAdminAction('unmute_user', { targetWallet });
+    if (success) {
       toast.success('Usuário desmutado com sucesso');
-    } catch (error) {
-      console.error('Error unmuting user:', error);
-      toast.error('Erro ao desmutar usuário');
     }
   };
 
   const updateHouseEdge = async (newEdge: number) => {
-    if (!isAdmin) return;
-
-    try {
-      const { error } = await supabase
-        .from('game_settings')
-        .update({ setting_value: newEdge.toString() })
-        .eq('setting_key', 'house_edge');
-
-      if (error) throw error;
-
-      await logAction('update_house_edge', '', { newEdge });
+    const success = await callAdminAction('update_house_edge', { newEdge });
+    if (success) {
       toast.success(`Taxa da casa atualizada para ${newEdge}%`);
-    } catch (error) {
-      console.error('Error updating house edge:', error);
-      toast.error('Erro ao atualizar taxa');
     }
   };
 
-  const selectRaffleWinner = async (ticketNumber: number, walletAddress: string) => {
-    if (!isAdmin) return;
-
-    try {
-      const { error } = await supabase
-        .from('raffle_winners')
-        .insert({
-          wallet_address: walletAddress,
-          ticket_number: ticketNumber,
-          raffle_id: 'main'
-        });
-
-      if (error) throw error;
-
-      await logAction('select_raffle_winner', walletAddress, { ticketNumber });
+  const selectRaffleWinner = async (ticketNumber: number, winnerWallet: string) => {
+    const success = await callAdminAction('select_raffle_winner', {
+      ticketNumber,
+      winnerWallet,
+    });
+    if (success) {
       toast.success('Vencedor da rifa selecionado!');
-    } catch (error) {
-      console.error('Error selecting winner:', error);
-      toast.error('Erro ao selecionar vencedor');
-    }
-  };
-
-  const logAction = async (actionType: string, targetWallet: string, details: any) => {
-    try {
-      await supabase
-        .from('action_logs')
-        .insert({
-          action_type: actionType,
-          target_wallet: targetWallet,
-          details
-        });
-    } catch (error) {
-      console.error('Error logging action:', error);
     }
   };
 
@@ -176,6 +164,6 @@ export const useAdmin = (walletAddress: string | null) => {
     muteUser,
     unmuteUser,
     updateHouseEdge,
-    selectRaffleWinner
+    selectRaffleWinner,
   };
 };

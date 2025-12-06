@@ -1,10 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.48.0";
+import * as nacl from "https://esm.sh/tweetnacl@1.0.3";
+import { decode as decodeBase58 } from "https://deno.land/std@0.168.0/encoding/base58.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Owner wallet address for admin-only operations
+const OWNER_WALLET = "4uNhT1fDwJg62gYbT7sSfJ4Qmwp7XAGSVCoEMUUoHktU";
 
 const getAdminClient = () => {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -16,6 +21,20 @@ const getAdminClient = () => {
 
   return createClient(supabaseUrl, serviceRoleKey);
 };
+
+// Verify that a signature was made by the claimed wallet
+function verifySignature(message: string, signature: string, publicKey: string): boolean {
+  try {
+    const messageBytes = new TextEncoder().encode(message);
+    const signatureBytes = decodeBase58(signature);
+    const publicKeyBytes = decodeBase58(publicKey);
+    
+    return nacl.sign.detached.verify(messageBytes, signatureBytes, publicKeyBytes);
+  } catch (error) {
+    console.error("Signature verification failed:", error);
+    return false;
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -51,8 +70,8 @@ serve(async (req) => {
   const supabase = getAdminClient();
 
   try {
+    // Action: ensure_active_round - public read, no auth needed
     if (action === "ensure_active_round") {
-      // Try to find an active round
       const { data, error } = await supabase
         .from("jackpot_rounds")
         .select("*")
@@ -93,14 +112,47 @@ serve(async (req) => {
       });
     }
 
+    // Action: place_bet - requires wallet signature verification
     if (action === "place_bet") {
       const roundId = (body.roundId || body.round_id) as string | undefined;
       const walletAddress = (body.walletAddress || body.wallet_address) as string | undefined;
       const amount = body.amount as number | undefined;
+      const signature = body.signature as string | undefined;
+      const timestamp = body.timestamp as string | undefined;
 
       if (!roundId || !walletAddress || typeof amount !== "number" || amount <= 0) {
         return new Response(JSON.stringify({ error: "Invalid bet data" }), {
           status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Verify wallet ownership via signature
+      if (!signature || !timestamp) {
+        return new Response(JSON.stringify({ error: "Missing signature for bet verification" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Verify timestamp is within 5 minutes
+      const timestampDate = new Date(timestamp);
+      const now = new Date();
+      const diffMs = Math.abs(now.getTime() - timestampDate.getTime());
+      if (diffMs > 5 * 60 * 1000) {
+        return new Response(JSON.stringify({ error: "Signature expired" }), {
+          status: 401,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Verify signature
+      const message = `Place bet: ${amount} SOL at ${timestamp}`;
+      const isValid = verifySignature(message, signature, walletAddress);
+
+      if (!isValid) {
+        return new Response(JSON.stringify({ error: "Invalid wallet signature" }), {
+          status: 401,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -180,8 +232,12 @@ serve(async (req) => {
       );
     }
 
+    // Action: draw_winner - requires admin signature verification
     if (action === "draw_winner") {
       const roundId = (body.roundId || body.round_id) as string | undefined;
+      const walletAddress = body.walletAddress as string | undefined;
+      const signature = body.signature as string | undefined;
+      const timestamp = body.timestamp as string | undefined;
 
       if (!roundId) {
         return new Response(JSON.stringify({ error: "Missing roundId" }), {
@@ -190,10 +246,30 @@ serve(async (req) => {
         });
       }
 
+      // Verify admin wallet for manual draws
+      if (walletAddress && signature && timestamp) {
+        if (walletAddress !== OWNER_WALLET) {
+          return new Response(JSON.stringify({ error: "Unauthorized: Not admin" }), {
+            status: 403,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        const message = `Draw winner for round: ${roundId} at ${timestamp}`;
+        const isValid = verifySignature(message, signature, walletAddress);
+
+        if (!isValid) {
+          return new Response(JSON.stringify({ error: "Invalid admin signature" }), {
+            status: 401,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+
       // Load round
       const { data: round, error: roundError } = await supabase
         .from("jackpot_rounds")
-        .select("id, total_pot, status")
+        .select("id, total_pot, status, started_at")
         .eq("id", roundId)
         .single();
 
@@ -203,11 +279,24 @@ serve(async (req) => {
       }
 
       if (!round || round.status !== "active") {
-        // Round already completed by another process
         return new Response(JSON.stringify({ alreadyCompleted: true }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+      }
+
+      // For automatic draws (no signature), verify 60 seconds have passed
+      if (!signature) {
+        const startedAt = new Date(round.started_at);
+        const now = new Date();
+        const elapsedMs = now.getTime() - startedAt.getTime();
+        
+        if (elapsedMs < 60000) {
+          return new Response(JSON.stringify({ error: "Round timer not expired" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
       }
 
       // Load bets
@@ -255,7 +344,7 @@ serve(async (req) => {
         });
       }
 
-      // Update round as completed, but only if still active (avoid race conditions)
+      // Update round as completed
       const { data: updated, error: updateError } = await supabase
         .from("jackpot_rounds")
         .update({
@@ -275,7 +364,6 @@ serve(async (req) => {
       }
 
       if (!updated) {
-        // Another process already completed the round
         return new Response(JSON.stringify({ alreadyCompleted: true }), {
           status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
